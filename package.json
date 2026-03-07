@@ -6,6 +6,8 @@
     "dev:server": "pnpm --filter @edwin/server run dev",
     "dev:web": "pnpm --filter @edwin/web run dev",
     "build": "pnpm -r run build",
+    "build:web": "pnpm --filter @edwin/shared run build && pnpm --filter @edwin/web run build",
+    "build:server": "pnpm --filter @edwin/shared run build && pnpm --filter @edwin/server run build",
     "test": "pnpm -r run test"
   },
   "pnpm": {
