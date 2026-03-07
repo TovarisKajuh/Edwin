@@ -9,6 +9,7 @@ import { chatRoutes } from './routes/chat.js';
 import { voiceRoutes } from './routes/voice.js';
 import { briefingRoutes } from './routes/briefing.js';
 import { dashboardRoutes } from './routes/dashboard.js';
+import { startScheduler } from './jobs/scheduler.js';
 
 dotenv.config({ path: '../../.env' });
 
@@ -40,6 +41,8 @@ await dashboardRoutes(server, store);
 server.get('/health', async () => {
   return { status: 'ok', name: 'Edwin', alive: true };
 });
+
+startScheduler(pipeline);
 
 const port = parseInt(process.env.PORT || '3001');
 await server.listen({ port, host: '0.0.0.0' });
