@@ -7,11 +7,17 @@ export async function voiceRoutes(server: FastifyInstance, pipeline: BrainPipeli
   server.post<{ Body: VoiceRequest }>('/api/voice', async (request, reply) => {
     const { transcript, conversationId } = request.body;
     const result = await pipeline.process(transcript, 'voice', conversationId);
-    const audioBuffer = await textToSpeech(result.message);
 
     reply.header('X-Edwin-Message', encodeURIComponent(result.message));
     reply.header('X-Edwin-Conversation-Id', result.conversationId.toString());
-    reply.type('audio/mpeg');
-    return reply.send(Buffer.from(audioBuffer));
+
+    const audioBuffer = await textToSpeech(result.message);
+    if (audioBuffer) {
+      reply.type('audio/mpeg');
+      return reply.send(Buffer.from(audioBuffer));
+    }
+
+    // Browser TTS mode: return JSON, frontend speaks it
+    return { message: result.message, conversationId: result.conversationId };
   });
 }

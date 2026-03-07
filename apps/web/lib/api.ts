@@ -22,10 +22,19 @@ export async function sendVoice(
     body: JSON.stringify({ transcript, conversationId }),
   });
   if (!res.ok) throw new Error(`Voice error: ${res.status}`);
-  const audio = await res.arrayBuffer();
-  const message = decodeURIComponent(res.headers.get('X-Edwin-Message') || '');
-  const convId = parseInt(res.headers.get('X-Edwin-Conversation-Id') || '0');
-  return { audio, message, conversationId: convId };
+
+  const contentType = res.headers.get('content-type') || '';
+  if (contentType.includes('audio/')) {
+    // Server returned audio (ElevenLabs/OpenAI TTS)
+    const audio = await res.arrayBuffer();
+    const message = decodeURIComponent(res.headers.get('X-Edwin-Message') || '');
+    const convId = parseInt(res.headers.get('X-Edwin-Conversation-Id') || '0');
+    return { audio, message, conversationId: convId };
+  }
+
+  // Server returned JSON (browser TTS mode)
+  const data = await res.json();
+  return { audio: new ArrayBuffer(0), message: data.message, conversationId: data.conversationId };
 }
 
 export async function getDashboard(): Promise<DashboardData> {

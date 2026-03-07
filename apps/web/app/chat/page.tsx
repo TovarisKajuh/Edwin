@@ -18,7 +18,7 @@ export default function ChatPage() {
   const [conversationId, setConversationId] = useState<number | undefined>();
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { play } = useAudio();
+  const { play, speak } = useAudio();
   const nextId = useRef(1);
 
   const scrollToBottom = useCallback(() => {
@@ -62,6 +62,8 @@ export default function ChatPage() {
 
         if (response.audioUrl) {
           play(response.audioUrl);
+        } else {
+          speak(response.message);
         }
       } catch {
         const errorMessage: ChatMessage = {
@@ -80,7 +82,7 @@ export default function ChatPage() {
         setLoading(false);
       }
     },
-    [conversationId, play]
+    [conversationId, play, speak]
   );
 
   return (

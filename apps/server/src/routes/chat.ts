@@ -11,7 +11,9 @@ export async function chatRoutes(server: FastifyInstance, pipeline: BrainPipelin
     let audioBase64: string | undefined;
     try {
       const audioBuffer = await textToSpeech(result.message);
-      audioBase64 = Buffer.from(audioBuffer).toString('base64');
+      if (audioBuffer) {
+        audioBase64 = Buffer.from(audioBuffer).toString('base64');
+      }
     } catch {
       // Voice is optional — chat still works without it
     }

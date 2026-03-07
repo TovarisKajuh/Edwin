@@ -14,40 +14,63 @@ export function CallScreen() {
   const conversationIdRef = useRef<number | undefined>(undefined);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  const speakBrowser = useCallback((text: string) => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.95;
+      utterance.pitch = 0.9;
+      const voices = window.speechSynthesis.getVoices();
+      const british = voices.find(v => v.lang === 'en-GB' && v.name.includes('Male'));
+      const english = voices.find(v => v.lang === 'en-GB');
+      if (british) utterance.voice = british;
+      else if (english) utterance.voice = english;
+      utterance.onend = () => setCallState('idle');
+      setCallState('speaking');
+      window.speechSynthesis.speak(utterance);
+    } else {
+      setCallState('idle');
+    }
+  }, []);
+
   const handleResult = useCallback(async (transcript: string) => {
     setLastTranscript(transcript);
     setCallState('processing');
 
     try {
-      const { audio, message, conversationId } = await sendVoice(
-        transcript,
-        conversationIdRef.current
-      );
-      conversationIdRef.current = conversationId;
-      setLastResponse(message);
+      const result = await sendVoice(transcript, conversationIdRef.current);
+      conversationIdRef.current = result.conversationId;
+      setLastResponse(result.message);
 
-      const blob = new Blob([audio], { type: 'audio/mpeg' });
-      const url = URL.createObjectURL(blob);
-      const audioEl = new Audio(url);
-      audioRef.current = audioEl;
+      // Check if we got actual audio data (more than a small JSON response)
+      if (result.audio.byteLength > 1000) {
+        const blob = new Blob([result.audio], { type: 'audio/mpeg' });
+        const url = URL.createObjectURL(blob);
+        const audioEl = new Audio(url);
+        audioRef.current = audioEl;
 
-      setCallState('speaking');
+        setCallState('speaking');
 
-      audioEl.onended = () => {
-        URL.revokeObjectURL(url);
-        setCallState('idle');
-      };
+        audioEl.onended = () => {
+          URL.revokeObjectURL(url);
+          setCallState('idle');
+        };
 
-      audioEl.onerror = () => {
-        URL.revokeObjectURL(url);
-        setCallState('idle');
-      };
+        audioEl.onerror = () => {
+          URL.revokeObjectURL(url);
+          // Fallback to browser TTS
+          speakBrowser(result.message);
+        };
 
-      await audioEl.play();
+        await audioEl.play();
+      } else {
+        // No server audio — use browser TTS
+        speakBrowser(result.message);
+      }
     } catch {
       setCallState('idle');
     }
-  }, []);
+  }, [speakBrowser]);
 
   const { listening, supported, start, stop } = useSpeechRecognition({
     onResult: handleResult,
