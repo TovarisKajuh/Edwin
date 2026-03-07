@@ -8,7 +8,7 @@ export async function briefingRoutes(server: FastifyInstance, pipeline: BrainPip
     const audioBuffer = await textToSpeech(text);
     return {
       text,
-      audio: Buffer.from(audioBuffer).toString('base64'),
+      audio: audioBuffer ? Buffer.from(audioBuffer).toString('base64') : undefined,
     };
   });
 }
