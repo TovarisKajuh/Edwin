@@ -179,22 +179,22 @@ export class MemoryStore {
 
   // ── Observation Queries ────────────────────────────────────────────
 
-  /** Get all active observations (excludes superseded), most recent first. */
+  /** Get all active observations (excludes superseded and compressed), most recent first. */
   getActiveObservations(limit: number = 50): ObservationRow[] {
     return this.db.raw().prepare(`
       SELECT * FROM observations
-      WHERE source != 'superseded'
+      WHERE source NOT IN ('superseded', 'compressed')
       ORDER BY observed_at DESC, id DESC
       LIMIT ?
     `).all(limit) as ObservationRow[];
   }
 
-  /** Get active observations of a specific category (excludes superseded), most recent first */
+  /** Get active observations of a specific category (excludes superseded and compressed), most recent first */
   getObservationsByCategory(category: string, limit: number = 20): ObservationRow[] {
     return this.db.raw().prepare(`
       SELECT * FROM observations
       WHERE category = ?
-        AND source != 'superseded'
+        AND source NOT IN ('superseded', 'compressed')
       ORDER BY observed_at DESC, id DESC
       LIMIT ?
     `).all(category, limit) as ObservationRow[];
@@ -231,6 +231,154 @@ export class MemoryStore {
     return this.db.raw().prepare(
       'SELECT * FROM observations WHERE id = ?'
     ).get(id) as ObservationRow | undefined;
+  }
+
+  // ── Conversation Management ────────────────────────────────────────
+
+  /** Update conversation with a summary */
+  setConversationSummary(id: number, summary: string): void {
+    this.db.raw().prepare(
+      'UPDATE conversations SET summary = ? WHERE id = ?'
+    ).run(summary, id);
+  }
+
+  // ── Date-Based Queries ────────────────────────────────────────────
+
+  /** Get active observations for a specific date (YYYY-MM-DD) */
+  getObservationsForDate(date: string): ObservationRow[] {
+    return this.db.raw().prepare(`
+      SELECT * FROM observations
+      WHERE DATE(observed_at) = ?
+        AND source NOT IN ('superseded', 'compressed')
+      ORDER BY observed_at ASC
+    `).all(date) as ObservationRow[];
+  }
+
+  /** Get observations within a date range, optionally filtered by category */
+  getObservationsByDateRange(
+    startDate: string,
+    endDate: string,
+    category?: string,
+  ): ObservationRow[] {
+    if (category) {
+      return this.db.raw().prepare(`
+        SELECT * FROM observations
+        WHERE DATE(observed_at) BETWEEN ? AND ?
+          AND category = ?
+          AND source NOT IN ('superseded', 'compressed')
+        ORDER BY observed_at ASC
+      `).all(startDate, endDate, category) as ObservationRow[];
+    }
+    return this.db.raw().prepare(`
+      SELECT * FROM observations
+      WHERE DATE(observed_at) BETWEEN ? AND ?
+        AND source NOT IN ('superseded', 'compressed')
+      ORDER BY observed_at ASC
+    `).all(startDate, endDate) as ObservationRow[];
+  }
+
+  // ── Compression ───────────────────────────────────────────────────
+
+  /** Mark observations as compressed (not deleted, just excluded from active queries) */
+  markObservationsCompressed(ids: number[]): void {
+    if (ids.length === 0) return;
+    const placeholders = ids.map(() => '?').join(',');
+    this.db.raw().prepare(`
+      UPDATE observations
+      SET source = 'compressed'
+      WHERE id IN (${placeholders})
+    `).run(...ids);
+  }
+
+  /** Get promotion candidates: categories with many observations that could become identity facts */
+  getPromotionCandidates(minCount: number): {
+    category: string;
+    key: string;
+    value: string;
+    confidence: number;
+    observationIds: number[];
+  }[] {
+    // Find categories with enough active observations
+    const groups = this.db.raw().prepare(`
+      SELECT category, COUNT(*) as cnt
+      FROM observations
+      WHERE source NOT IN ('superseded', 'compressed')
+        AND category NOT IN ('daily_summary', 'emotional_state')
+      GROUP BY category
+      HAVING cnt >= ?
+    `).all(minCount) as { category: string; cnt: number }[];
+
+    const candidates: {
+      category: string;
+      key: string;
+      value: string;
+      confidence: number;
+      observationIds: number[];
+    }[] = [];
+
+    for (const group of groups) {
+      // Get all observations in this category
+      const observations = this.db.raw().prepare(`
+        SELECT id, content, confidence FROM observations
+        WHERE category = ?
+          AND source NOT IN ('superseded', 'compressed')
+        ORDER BY confidence DESC, observed_at DESC
+      `).all(group.category) as { id: number; content: string; confidence: number }[];
+
+      if (observations.length < minCount) continue;
+
+      // Use the highest confidence observation as the promoted value
+      const best = observations[0];
+      candidates.push({
+        category: group.category === 'fact' ? 'learned_facts' : group.category,
+        key: `pattern_${group.category}`,
+        value: best.content,
+        confidence: best.confidence,
+        observationIds: observations.map((o) => o.id),
+      });
+    }
+
+    return candidates;
+  }
+
+  // ── Weekly Summaries ──────────────────────────────────────────────
+
+  /** Store a weekly summary */
+  addWeeklySummary(
+    weekStart: string,
+    highlights: string,
+    concerns: string,
+    patterns: string,
+    moodTrend: string,
+  ): void {
+    this.db.raw().prepare(`
+      INSERT INTO weekly_summaries (week_start, highlights, concerns, patterns, mood_trend)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(week_start) DO UPDATE SET
+        highlights = excluded.highlights,
+        concerns = excluded.concerns,
+        patterns = excluded.patterns,
+        mood_trend = excluded.mood_trend
+    `).run(weekStart, highlights, concerns, patterns, moodTrend);
+  }
+
+  /** Get a weekly summary */
+  getWeeklySummary(weekStart: string): {
+    week_start: string;
+    highlights: string;
+    concerns: string;
+    patterns: string;
+    mood_trend: string;
+  } | undefined {
+    return this.db.raw().prepare(
+      'SELECT * FROM weekly_summaries WHERE week_start = ?'
+    ).get(weekStart) as {
+      week_start: string;
+      highlights: string;
+      concerns: string;
+      patterns: string;
+      mood_trend: string;
+    } | undefined;
   }
 
   // ── Memory Snapshot ────────────────────────────────────────────────

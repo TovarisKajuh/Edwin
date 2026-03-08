@@ -42,7 +42,7 @@ server.get('/health', async () => {
   return { status: 'ok', name: 'Edwin', alive: true };
 });
 
-startScheduler(pipeline);
+startScheduler(pipeline, store);
 
 const port = parseInt(process.env.PORT || '3001');
 await server.listen({ port, host: '0.0.0.0' });
