@@ -10,6 +10,7 @@
 
 import type { TimeOfDay, DayType } from '@edwin/shared';
 import { MemoryStore } from '../memory/store.js';
+import { generatePredictions, formatPredictions } from './understanding/predictor.js';
 
 export interface ReasoningBrief {
   temporal: string;
@@ -18,6 +19,7 @@ export interface ReasoningBrief {
   recentMood: string | null;
   activeCommitments: string[];
   knownPatterns: string[];
+  predictions: string[];
 }
 
 /**
@@ -148,6 +150,10 @@ export function buildReasoningBrief(
     awareness.push(`${pendingActions.length} pending reminder(s) — mention if relevant to conversation.`);
   }
 
+  // ── Behavioral predictions ─────────────────────────────────────
+  const rawPredictions = generatePredictions(store, timeOfDay, dayType);
+  const predictions = formatPredictions(rawPredictions);
+
   return {
     temporal,
     awareness,
@@ -155,6 +161,7 @@ export function buildReasoningBrief(
     recentMood,
     activeCommitments,
     knownPatterns,
+    predictions,
   };
 }
 
@@ -189,6 +196,13 @@ export function formatReasoningBrief(brief: ReasoningBrief): string {
   if (brief.knownPatterns.length > 0) {
     lines.push('Behavioural patterns you\'ve noticed:');
     for (const p of brief.knownPatterns) {
+      lines.push(`  - ${p}`);
+    }
+  }
+
+  if (brief.predictions.length > 0) {
+    lines.push('Predictions (act on these if relevant):');
+    for (const p of brief.predictions) {
       lines.push(`  - ${p}`);
     }
   }
