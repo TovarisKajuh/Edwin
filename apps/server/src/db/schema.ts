@@ -130,6 +130,18 @@ CREATE TABLE IF NOT EXISTS calendar_events (
   updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS goals (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  category TEXT NOT NULL,
+  target REAL NOT NULL,
+  unit TEXT NOT NULL,
+  deadline TEXT NOT NULL,
+  current_value REAL DEFAULT 0,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX IF NOT EXISTS idx_calendar_events_start ON calendar_events(start_time);
 CREATE INDEX IF NOT EXISTS idx_identity_category ON identity(category);
 CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id);

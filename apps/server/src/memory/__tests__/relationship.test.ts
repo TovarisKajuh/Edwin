@@ -6,8 +6,6 @@ import {
   getMilestones,
   getMilestonesByType,
   searchMilestones,
-  detectMilestone,
-  detectAndStoreMilestones,
   checkAnniversaries,
   getRelationshipDuration,
   getConversationCount,
@@ -83,105 +81,6 @@ describe('Relationship Memory', () => {
       addMilestone(store, 'achievement', 'Something unrelated', '2026-03-01');
       const results = searchMilestones(store, 'nonexistent');
       expect(results.length).toBe(0);
-    });
-  });
-
-  // ── Milestone Detection ───────────────────────────────────────
-
-  describe('detectMilestone', () => {
-    it('should detect achievements', () => {
-      const result = detectMilestone(
-        'I just closed the biggest deal of my career!',
-        'Outstanding work, sir.',
-      );
-      expect(result).not.toBeNull();
-      expect(result!.type).toBe('achievement');
-    });
-
-    it('should detect struggles', () => {
-      const result = detectMilestone(
-        'The client rejected our proposal. Worst day.',
-        'I\'m sorry to hear that, sir.',
-      );
-      expect(result).not.toBeNull();
-      expect(result!.type).toBe('struggle');
-    });
-
-    it('should detect growth', () => {
-      const result = detectMilestone(
-        'I realized I need to stop procrastinating. From now on, mornings are for deep work.',
-        'That\'s a powerful decision, sir.',
-      );
-      expect(result).not.toBeNull();
-      expect(result!.type).toBe('growth');
-    });
-
-    it('should detect connection', () => {
-      const result = detectMilestone(
-        'Thank you Edwin, you really helped me today.',
-        'Always here for you, sir.',
-      );
-      expect(result).not.toBeNull();
-      expect(result!.type).toBe('connection');
-    });
-
-    it('should detect humor', () => {
-      const result = detectMilestone(
-        'That was hilarious, the coffee joke',
-        'Glad I could make you laugh, sir!',
-      );
-      expect(result).not.toBeNull();
-      expect(result!.type).toBe('humor');
-    });
-
-    it('should return null for mundane messages', () => {
-      const result = detectMilestone(
-        'What time is my meeting tomorrow?',
-        'Your meeting is at 10am, sir.',
-      );
-      expect(result).toBeNull();
-    });
-  });
-
-  // ── Bulk Detection ────────────────────────────────────────────
-
-  describe('detectAndStoreMilestones', () => {
-    it('should detect and store milestones from conversation', () => {
-      const messages: { role: 'jan' | 'edwin'; content: string }[] = [
-        { role: 'jan', content: 'I just landed the solar farm contract!' },
-        { role: 'edwin', content: 'Congratulations, sir!' },
-        { role: 'jan', content: 'What time is dinner?' },
-        { role: 'edwin', content: 'You usually eat around 7pm, sir.' },
-      ];
-
-      const count = detectAndStoreMilestones(store, messages);
-      expect(count).toBe(1);
-
-      const milestones = getMilestones(store);
-      expect(milestones.length).toBe(1);
-      expect(milestones[0].type).toBe('achievement');
-    });
-
-    it('should detect multiple milestones in one conversation', () => {
-      const messages: { role: 'jan' | 'edwin'; content: string }[] = [
-        { role: 'jan', content: 'I signed the biggest contract ever!' },
-        { role: 'edwin', content: 'Amazing!' },
-        { role: 'jan', content: 'I realized I need to take this more seriously from now on.' },
-        { role: 'edwin', content: 'That\'s growth, sir.' },
-      ];
-
-      const count = detectAndStoreMilestones(store, messages);
-      expect(count).toBe(2);
-    });
-
-    it('should not store milestones for mundane conversation', () => {
-      const messages: { role: 'jan' | 'edwin'; content: string }[] = [
-        { role: 'jan', content: 'What\'s the weather like?' },
-        { role: 'edwin', content: 'Sunny and 22°C, sir.' },
-      ];
-
-      const count = detectAndStoreMilestones(store, messages);
-      expect(count).toBe(0);
     });
   });
 

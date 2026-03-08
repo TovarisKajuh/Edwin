@@ -28,39 +28,6 @@ export interface Milestone {
   date: string;
 }
 
-// ── Milestone Detection Keywords ────────────────────────────────
-
-const ACHIEVEMENT_PATTERNS = [
-  'closed', 'signed', 'landed', 'won', 'achieved', 'passed', 'hit',
-  'personal best', 'new record', 'promotion', 'deal', 'contract',
-  'sold', 'finished', 'completed', 'shipped', 'launched', 'streak',
-  'milestone', 'first time', 'never done before',
-];
-
-const STRUGGLE_PATTERNS = [
-  'lost', 'failed', 'rejected', 'fired', 'broke up', 'breakup',
-  'worst day', 'hardest', 'toughest', 'crisis', 'emergency',
-  'setback', 'disappointed', 'devastat',
-];
-
-const GROWTH_PATTERNS = [
-  'realised', 'realized', 'learned', 'changed my mind', 'decided to',
-  'never again', 'from now on', 'turning point', 'wake-up call',
-  'breakthrough', 'finally understand', 'first week of', 'first month',
-  'consistent for', 'been doing', 'every day for',
-];
-
-const HUMOR_PATTERNS = [
-  'haha', 'lmao', 'that was hilarious', 'funniest', 'made me laugh',
-  'inside joke', 'remember when', 'classic',
-];
-
-const CONNECTION_PATTERNS = [
-  'appreciate you', 'grateful for you', 'means a lot', 'thank you edwin',
-  'glad I have you', 'you understand', 'feel better now', 'helped me',
-  'needed that', 'you were right',
-];
-
 // ── Milestone Storage ───────────────────────────────────────────
 
 /**
@@ -104,88 +71,6 @@ export function searchMilestones(store: MemoryStore, query: string, limit: numbe
   const all = getMilestones(store, 100);
   const lower = query.toLowerCase();
   return all.filter((m) => m.content.toLowerCase().includes(lower)).slice(0, limit);
-}
-
-// ── Milestone Detection ─────────────────────────────────────────
-
-/**
- * Analyze a conversation exchange and detect if it contains a milestone.
- * Called after memory extraction to identify significant moments.
- */
-export function detectMilestone(
-  janMessage: string,
-  edwinResponse: string,
-): { type: MilestoneType; content: string } | null {
-  const combined = (janMessage + ' ' + edwinResponse).toLowerCase();
-  const janLower = janMessage.toLowerCase();
-
-  // Achievement — Jan shares a win
-  if (hasPatterns(janLower, ACHIEVEMENT_PATTERNS)) {
-    return {
-      type: 'achievement',
-      content: summariseMilestone(janMessage, 'achievement'),
-    };
-  }
-
-  // Struggle — Jan shares a setback
-  if (hasPatterns(janLower, STRUGGLE_PATTERNS)) {
-    return {
-      type: 'struggle',
-      content: summariseMilestone(janMessage, 'struggle'),
-    };
-  }
-
-  // Growth — Jan shows personal growth
-  if (hasPatterns(janLower, GROWTH_PATTERNS)) {
-    return {
-      type: 'growth',
-      content: summariseMilestone(janMessage, 'growth'),
-    };
-  }
-
-  // Connection — Jan expresses appreciation for Edwin
-  if (hasPatterns(janLower, CONNECTION_PATTERNS)) {
-    return {
-      type: 'connection',
-      content: summariseMilestone(janMessage, 'connection'),
-    };
-  }
-
-  // Humor — shared funny moment
-  if (hasPatterns(combined, HUMOR_PATTERNS)) {
-    return {
-      type: 'humor',
-      content: summariseMilestone(janMessage, 'humor'),
-    };
-  }
-
-  return null;
-}
-
-/**
- * Detect and store milestones from a conversation.
- * Called from the extraction pipeline after memory extraction.
- */
-export function detectAndStoreMilestones(
-  store: MemoryStore,
-  messages: { role: 'jan' | 'edwin'; content: string }[],
-): number {
-  let stored = 0;
-
-  for (let i = 0; i < messages.length - 1; i++) {
-    const msg = messages[i];
-    const next = messages[i + 1];
-
-    if (msg.role === 'jan' && next.role === 'edwin') {
-      const milestone = detectMilestone(msg.content, next.content);
-      if (milestone) {
-        addMilestone(store, milestone.type, milestone.content);
-        stored++;
-      }
-    }
-  }
-
-  return stored;
 }
 
 // ── Anniversary Detection ───────────────────────────────────────
@@ -301,17 +186,6 @@ export function formatRelationshipContext(store: MemoryStore, referenceDate?: Da
 }
 
 // ── Internal Helpers ─────────────────────────────────────────────
-
-function hasPatterns(text: string, patterns: string[]): boolean {
-  return patterns.some((p) => text.includes(p));
-}
-
-function summariseMilestone(message: string, type: MilestoneType): string {
-  // Take first 120 chars, clean up
-  const clean = message.replace(/\n/g, ' ').trim();
-  if (clean.length <= 120) return clean;
-  return clean.slice(0, 117) + '...';
-}
 
 function parseMilestone(id: number, content: string): Milestone | null {
   const match = content.match(/^\[(\w+)\] (.+?) \((\d{4}-\d{2}-\d{2})\)$/);

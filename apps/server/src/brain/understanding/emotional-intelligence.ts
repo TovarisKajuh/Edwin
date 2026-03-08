@@ -1,5 +1,5 @@
 /**
- * Emotional Intelligence Engine — Session 39.
+ * Emotional Intelligence Engine — Session 39 (upgraded).
  *
  * Edwin's emotional intelligence synthesizes mood, patterns, predictions,
  * and context to decide HOW to respond — not just what to say.
@@ -12,7 +12,8 @@
  *   - Be present: Jan needs company, not advice
  *   - Be quiet: Jan needs space
  *
- * Mode selection is based on emotional trajectory, not just current state.
+ * Mode selection is based on emotional trajectory + contextual message analysis.
+ * Keyword matching uses multi-word phrases to avoid false positives.
  */
 
 import { MemoryStore } from '../../memory/store.js';
@@ -30,7 +31,7 @@ export interface EmotionalAssessment {
   confidence: number; // 0-1
 }
 
-// ── Mood Keywords ───────────────────────────────────────────────
+// ── Mood Keywords (for trajectory scoring) ──────────────────────
 
 const NEGATIVE_MOODS = [
   'stress', 'overwhelm', 'anxious', 'anxiety', 'nervous', 'worried',
@@ -50,23 +51,54 @@ const POSITIVE_MOODS = [
   'grateful', 'thankful', 'appreciat',
 ];
 
-const ACHIEVEMENT_KEYWORDS = [
-  'did it', 'nailed', 'crushed', 'closed the deal', 'signed', 'landed',
-  'finished', 'completed', 'achieved', 'hit my target', 'hit the target',
-  'won', 'passed', 'got the', 'promotion', 'contract', 'sold',
-  'personal best', 'new record', 'streak',
+// ── Context-Aware Message Patterns ──────────────────────────────
+// Multi-word phrases to avoid false positives like "lost weight" → struggle
+
+/**
+ * Achievement: Jan is sharing a WIN. These are phrases that almost
+ * always indicate success, not ambiguous single words.
+ */
+const ACHIEVEMENT_PATTERNS = [
+  // Explicit win verbs with context
+  'i closed', 'i signed', 'i landed', 'i won', 'i got the', 'i nailed',
+  'i crushed', 'i passed', 'i achieved', 'i finished', 'i completed',
+  'i shipped', 'i launched', 'i sold',
+  // Result phrases
+  'just closed', 'just signed', 'just landed', 'just got the',
+  'deal is done', 'contract signed', 'got the promotion', 'got promoted',
+  'hit my target', 'hit the target', 'hit my goal',
+  'personal best', 'new record', 'new pb',
+  'day streak', 'week streak', 'month streak',
+  // Emotional celebration
+  'did it!', 'we did it', 'finally did it', 'made it happen',
+  'biggest deal', 'biggest contract', 'biggest win',
 ];
 
-const AVOIDANCE_KEYWORDS = [
-  'skip', 'didn\'t', 'postpone', 'later', 'tomorrow', 'maybe',
-  'can\'t be bothered', 'not today', 'whatever', 'meh', 'don\'t care',
-  'procrastinat', 'avoid',
+/**
+ * Spiral: Jan is catastrophising or in a negative thought loop.
+ * These phrases indicate generalised hopelessness, not just a bad day.
+ */
+const SPIRAL_PATTERNS = [
+  'everything is falling apart', 'nothing ever works', 'what\'s the point',
+  'why even bother', 'why even try', 'all falling apart',
+  'can\'t do anything right', 'hopeless', 'never going to make it',
+  'always fail', 'never succeed', 'it\'s impossible',
+  'i give up', 'i want to give up', 'want to quit everything',
+  'nothing matters', 'waste of time', 'pointless',
+  'i can\'t take it', 'i can\'t handle',
 ];
 
-const SPIRAL_KEYWORDS = [
-  'everything is', 'nothing works', 'what\'s the point', 'why bother',
-  'all falling apart', 'can\'t do anything', 'hopeless', 'never going to',
-  'always', 'never', 'impossible', 'give up', 'waste',
+/**
+ * Avoidance: Jan is postponing something he should do.
+ * Requires "I" or action context to avoid false positives.
+ */
+const AVOIDANCE_PATTERNS = [
+  'i\'ll skip', 'i\'m skipping', 'skipping today', 'skip the gym',
+  'not going to the gym', 'not going today',
+  'i\'ll do it later', 'i\'ll do it tomorrow', 'maybe tomorrow',
+  'can\'t be bothered', 'not today', 'don\'t feel like it',
+  'i\'ll postpone', 'postponing', 'pushing it back',
+  'i\'m procrastinat', 'i keep procrastinat', 'i\'m avoiding',
 ];
 
 // ── Assessment ──────────────────────────────────────────────────
@@ -78,19 +110,13 @@ export function assessEmotionalState(
   store: MemoryStore,
   currentMessage?: string,
 ): EmotionalAssessment {
-  // Get mood history (most recent first)
   const moodObs = store.getObservationsByCategory('emotional_state', 5);
   const currentMood = moodObs.length > 0 ? moodObs[0].content : null;
-
-  // Determine trajectory
   const trajectory = assessTrajectory(moodObs.map((o) => o.content));
-
-  // Determine mode based on message content + mood + trajectory
   const messageLower = currentMessage?.toLowerCase() || '';
-  const moodLower = currentMood?.toLowerCase() || '';
 
-  // Check for celebration opportunity
-  if (hasKeywords(messageLower, ACHIEVEMENT_KEYWORDS)) {
+  // Priority 1: Celebration — always celebrate wins regardless of mood
+  if (matchesPatterns(messageLower, ACHIEVEMENT_PATTERNS)) {
     return {
       currentMood,
       trajectory,
@@ -101,8 +127,8 @@ export function assessEmotionalState(
     };
   }
 
-  // Check for spiraling
-  if (hasKeywords(messageLower, SPIRAL_KEYWORDS)) {
+  // Priority 2: Spiral detection — break negative loops before they deepen
+  if (matchesPatterns(messageLower, SPIRAL_PATTERNS)) {
     return {
       currentMood,
       trajectory,
@@ -113,9 +139,8 @@ export function assessEmotionalState(
     };
   }
 
-  // Check for avoidance
-  if (hasKeywords(messageLower, AVOIDANCE_KEYWORDS)) {
-    // If trajectory is declining, be supportive not pushy
+  // Priority 3: Avoidance detection — contextual response based on trajectory
+  if (matchesPatterns(messageLower, AVOIDANCE_PATTERNS)) {
     if (trajectory === 'declining' || trajectory === 'stable_bad') {
       return {
         currentMood,
@@ -126,7 +151,6 @@ export function assessEmotionalState(
         confidence: 0.7,
       };
     }
-    // Otherwise, push
     return {
       currentMood,
       trajectory,
@@ -137,7 +161,7 @@ export function assessEmotionalState(
     };
   }
 
-  // Trajectory-based decisions
+  // Priority 4: Trajectory-based decisions (no strong message signal)
   switch (trajectory) {
     case 'declining':
       return {
@@ -150,7 +174,6 @@ export function assessEmotionalState(
       };
 
     case 'stable_bad':
-      // Escalate approach — stable bad means current strategy isn't working
       return {
         currentMood,
         trajectory,
@@ -181,7 +204,6 @@ export function assessEmotionalState(
       };
 
     default:
-      // No mood data
       return {
         currentMood,
         trajectory,
@@ -201,12 +223,10 @@ function assessTrajectory(moodHistory: string[]): EmotionalAssessment['trajector
 
   const scores = moodHistory.map(scoreMood);
 
-  // Compare recent to older
   const recent = scores.slice(0, Math.min(2, scores.length));
   const older = scores.slice(Math.min(2, scores.length));
 
   if (older.length === 0) {
-    // Only have recent data
     const avg = recent.reduce((a, b) => a + b, 0) / recent.length;
     if (avg > 0.3) return 'stable_good';
     if (avg < -0.3) return 'stable_bad';
@@ -267,6 +287,10 @@ export function formatEmotionalIntelligence(assessment: EmotionalAssessment): st
 
 // ── Helpers ─────────────────────────────────────────────────────
 
-function hasKeywords(text: string, keywords: string[]): boolean {
-  return keywords.some((kw) => text.includes(kw));
+/**
+ * Match against multi-word phrase patterns.
+ * Each pattern is a phrase that must appear as a substring.
+ */
+function matchesPatterns(text: string, patterns: string[]): boolean {
+  return patterns.some((p) => text.includes(p));
 }

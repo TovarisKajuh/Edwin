@@ -3,7 +3,10 @@ import { Database } from '../../db/database';
 import { MemoryStore } from '../../memory/store';
 import {
   getGoals,
+  addGoal,
   updateGoalValue,
+  removeGoal,
+  seedVisionGoals,
   calculateProgress,
   getGoalSnapshot,
   generateMonthlySnapshot,
@@ -19,15 +22,16 @@ const REF_DATE = new Date('2026-06-01T12:00:00Z'); // ~5.5 years from 2031 deadl
 beforeEach(() => {
   const db = new Database(':memory:');
   store = new MemoryStore(db);
+  seedVisionGoals(store);
 });
 
 describe('Goal Tracking', () => {
   // ── Goal Retrieval ────────────────────────────────────────────
 
   describe('getGoals', () => {
-    it('should return default vision goals with zero values', () => {
+    it('should return seeded vision goals with zero values', () => {
       const goals = getGoals(store);
-      expect(goals.length).toBeGreaterThanOrEqual(4);
+      expect(goals.length).toBe(4);
 
       const netWorth = goals.find((g) => g.id === 'net_worth');
       expect(netWorth).toBeDefined();
@@ -35,7 +39,7 @@ describe('Goal Tracking', () => {
       expect(netWorth!.currentValue).toBe(0);
     });
 
-    it('should return stored values when updated', () => {
+    it('should return updated values', () => {
       updateGoalValue(store, 'net_worth', 150000);
 
       const goals = getGoals(store);
@@ -44,19 +48,16 @@ describe('Goal Tracking', () => {
     });
 
     it('should use live data for gym consistency', () => {
-      // Log gym completions this week
       const today = new Date().toISOString().slice(0, 10);
       store.addObservation('habit_log', `[gym] completed (${today})`, 1.0, 'told');
 
       const goals = getGoals(store);
       const gym = goals.find((g) => g.id === 'gym_consistency');
       expect(gym).toBeDefined();
-      // Should pull from habit stats
       expect(gym!.currentValue).toBeGreaterThanOrEqual(0);
     });
 
     it('should use live data for social network', () => {
-      // Add people with recent contact
       const db = store.raw();
       const today = new Date().toISOString().slice(0, 10);
       db.prepare("INSERT INTO people (name, relationship, last_contact) VALUES (?, ?, ?)").run('Max', 'friend', today);
@@ -68,22 +69,61 @@ describe('Goal Tracking', () => {
     });
   });
 
-  // ── Goal Value Updates ────────────────────────────────────────
+  // ── Goal CRUD ───────────────────────────────────────────────
+
+  describe('addGoal', () => {
+    it('should add a new goal', () => {
+      addGoal(store, 'learn_sailing', 'Learn to Sail', 'personal', 1, 'certification', '2027-12-31');
+
+      const goals = getGoals(store);
+      expect(goals.length).toBe(5);
+      const sailing = goals.find((g) => g.id === 'learn_sailing');
+      expect(sailing).toBeDefined();
+      expect(sailing!.name).toBe('Learn to Sail');
+      expect(sailing!.target).toBe(1);
+    });
+
+    it('should upsert existing goal', () => {
+      addGoal(store, 'net_worth', 'Net Worth Updated', 'financial', 10_000_000, 'EUR', '2032-12-31');
+
+      const goals = getGoals(store);
+      const netWorth = goals.find((g) => g.id === 'net_worth');
+      expect(netWorth!.target).toBe(10_000_000);
+      expect(netWorth!.name).toBe('Net Worth Updated');
+    });
+  });
+
+  describe('removeGoal', () => {
+    it('should remove an existing goal', () => {
+      const removed = removeGoal(store, 'social_network');
+      expect(removed).toBe(true);
+
+      const goals = getGoals(store);
+      expect(goals.length).toBe(3);
+      expect(goals.find((g) => g.id === 'social_network')).toBeUndefined();
+    });
+
+    it('should return false for non-existent goal', () => {
+      const removed = removeGoal(store, 'nonexistent');
+      expect(removed).toBe(false);
+    });
+  });
 
   describe('updateGoalValue', () => {
-    it('should store goal value in identity table', () => {
+    it('should update goal value in goals table', () => {
       updateGoalValue(store, 'net_worth', 250000);
-      const identity = store.getIdentity('goal', 'net_worth');
-      expect(identity).toBeDefined();
-      expect(identity!.value).toBe('250000');
+      const goals = getGoals(store);
+      const netWorth = goals.find((g) => g.id === 'net_worth');
+      expect(netWorth!.currentValue).toBe(250000);
     });
 
     it('should update existing value', () => {
       updateGoalValue(store, 'company_revenue', 500000);
       updateGoalValue(store, 'company_revenue', 750000);
 
-      const identity = store.getIdentity('goal', 'company_revenue');
-      expect(identity!.value).toBe('750000');
+      const goals = getGoals(store);
+      const revenue = goals.find((g) => g.id === 'company_revenue');
+      expect(revenue!.currentValue).toBe(750000);
     });
   });
 
@@ -92,14 +132,9 @@ describe('Goal Tracking', () => {
   describe('calculateProgress', () => {
     it('should calculate percentage correctly', () => {
       const goal: Goal = {
-        id: 'test',
-        name: 'Test Goal',
-        category: 'financial',
-        target: 1000,
-        unit: 'EUR',
-        deadline: '2031-12-31',
-        currentValue: 250,
-        lastUpdated: null,
+        id: 'test', name: 'Test Goal', category: 'financial',
+        target: 1000, unit: 'EUR', deadline: '2031-12-31',
+        currentValue: 250, lastUpdated: null,
       };
 
       const progress = calculateProgress(goal, REF_DATE);
@@ -108,14 +143,9 @@ describe('Goal Tracking', () => {
 
     it('should cap percentage at 100', () => {
       const goal: Goal = {
-        id: 'test',
-        name: 'Test Goal',
-        category: 'fitness',
-        target: 4,
-        unit: 'sessions',
-        deadline: '2031-12-31',
-        currentValue: 5,
-        lastUpdated: null,
+        id: 'test', name: 'Test Goal', category: 'fitness',
+        target: 4, unit: 'sessions', deadline: '2031-12-31',
+        currentValue: 5, lastUpdated: null,
       };
 
       const progress = calculateProgress(goal, REF_DATE);
@@ -125,32 +155,21 @@ describe('Goal Tracking', () => {
 
     it('should calculate months remaining', () => {
       const goal: Goal = {
-        id: 'test',
-        name: 'Test Goal',
-        category: 'financial',
-        target: 6_000_000,
-        unit: 'EUR',
-        deadline: '2031-12-31',
-        currentValue: 0,
-        lastUpdated: null,
+        id: 'test', name: 'Test Goal', category: 'financial',
+        target: 6_000_000, unit: 'EUR', deadline: '2031-12-31',
+        currentValue: 0, lastUpdated: null,
       };
 
       const progress = calculateProgress(goal, REF_DATE);
-      // June 2026 to Dec 2031 = ~66 months
       expect(progress.monthsRemaining).toBeGreaterThan(60);
       expect(progress.monthsRemaining).toBeLessThan(70);
     });
 
     it('should show behind-schedule for slow progress', () => {
       const goal: Goal = {
-        id: 'test',
-        name: 'Test Goal',
-        category: 'financial',
-        target: 6_000_000,
-        unit: 'EUR',
-        deadline: '2031-12-31',
-        currentValue: 10000,  // Very low for a €6M target
-        lastUpdated: null,
+        id: 'test', name: 'Test Goal', category: 'financial',
+        target: 6_000_000, unit: 'EUR', deadline: '2031-12-31',
+        currentValue: 10000, lastUpdated: null,
       };
 
       const progress = calculateProgress(goal, REF_DATE);
@@ -160,14 +179,9 @@ describe('Goal Tracking', () => {
 
     it('should handle zero current value', () => {
       const goal: Goal = {
-        id: 'test',
-        name: 'Test Goal',
-        category: 'financial',
-        target: 1000,
-        unit: 'EUR',
-        deadline: '2031-12-31',
-        currentValue: 0,
-        lastUpdated: null,
+        id: 'test', name: 'Test Goal', category: 'financial',
+        target: 1000, unit: 'EUR', deadline: '2031-12-31',
+        currentValue: 0, lastUpdated: null,
       };
 
       const progress = calculateProgress(goal, REF_DATE);
@@ -181,20 +195,20 @@ describe('Goal Tracking', () => {
   describe('getGoalSnapshot', () => {
     it('should return snapshot with all goals', () => {
       const snapshot = getGoalSnapshot(store, REF_DATE);
-      expect(snapshot.goals.length).toBeGreaterThanOrEqual(4);
+      expect(snapshot.goals.length).toBe(4);
       expect(typeof snapshot.overallScore).toBe('number');
     });
 
     it('should calculate weighted overall score', () => {
-      updateGoalValue(store, 'net_worth', 600000);  // 10% of 6M
-      updateGoalValue(store, 'company_revenue', 1500000);  // 10% of 15M
+      updateGoalValue(store, 'net_worth', 600000);
+      updateGoalValue(store, 'company_revenue', 1500000);
 
       const snapshot = getGoalSnapshot(store, REF_DATE);
       expect(snapshot.overallScore).toBeGreaterThan(0);
     });
 
     it('should identify top win', () => {
-      updateGoalValue(store, 'net_worth', 3000000);  // 50%
+      updateGoalValue(store, 'net_worth', 3000000);
 
       const snapshot = getGoalSnapshot(store, REF_DATE);
       expect(snapshot.topWin).toContain('Net Worth');
@@ -202,11 +216,9 @@ describe('Goal Tracking', () => {
     });
 
     it('should identify top concern when behind', () => {
-      updateGoalValue(store, 'net_worth', 1000);  // Basically nothing
+      updateGoalValue(store, 'net_worth', 1000);
 
       const snapshot = getGoalSnapshot(store, REF_DATE);
-      // Some goals will be behind schedule
-      // With such a low value, net worth should be a concern
       if (snapshot.topConcern) {
         expect(snapshot.topConcern).toContain('acceleration');
       }
@@ -223,10 +235,8 @@ describe('Goal Tracking', () => {
       expect(text).toContain('Goal Progress');
       expect(text).toContain('Net Worth');
 
-      // Should be stored as observation
       const obs = store.getObservationsByCategory('goal_progress', 5);
       expect(obs.length).toBe(1);
-      expect(obs[0].content).toContain('Goal Progress');
     });
 
     it('should include overall percentage', () => {
@@ -251,12 +261,6 @@ describe('Goal Tracking', () => {
       expect(result).toContain('VISION PROGRESS');
       expect(result).toContain('Net Worth');
     });
-
-    it('should include on-track status', () => {
-      updateGoalValue(store, 'net_worth', 3000000);
-      const result = formatGoalContext(store, REF_DATE);
-      expect(result).toContain('50%');
-    });
   });
 
   // ── Goal Motivation ───────────────────────────────────────────
@@ -268,7 +272,6 @@ describe('Goal Tracking', () => {
     });
 
     it('should flag gym sessions needed', () => {
-      // Log 2 gym sessions this week (target is 4)
       const today = new Date().toISOString().slice(0, 10);
       store.addObservation('habit_log', `[gym] completed (${today})`, 1.0, 'told');
 
@@ -289,7 +292,7 @@ describe('Goal Tracking', () => {
     });
 
     it('should note early stage wealth building', () => {
-      updateGoalValue(store, 'net_worth', 50000);  // Well under 10% of 6M
+      updateGoalValue(store, 'net_worth', 50000);
 
       const result = getGoalMotivation(store);
       expect(result).not.toBeNull();

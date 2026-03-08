@@ -1,4 +1,5 @@
 import { MemoryStore } from '../store.js';
+import { seedVisionGoals } from '../../tracking/goals.js';
 
 /**
  * Seed Jan's profile into Edwin's memory.
@@ -83,6 +84,9 @@ export function seedJanProfile(store: MemoryStore): void {
   store.addObservation('preference', 'Jan doesn\'t want to be asked obvious questions — Edwin should know what to do from the vision', 1.0, 'told');
   store.addObservation('preference', 'Mornings should be energizing and direct, evenings should be gentle, Sundays should be gentle all day', 1.0, 'told');
   store.addObservation('preference', 'Jan enjoys walks, parks, sunsets, being outdoors — but won\'t initiate these himself', 1.0, 'told');
+
+  // ── Seed vision goals into goals table ───────────────────────
+  seedVisionGoals(store);
 
   console.log('[seed] Jan\'s profile seeded into memory');
 }

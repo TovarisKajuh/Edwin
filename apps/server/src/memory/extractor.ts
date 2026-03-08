@@ -1,10 +1,12 @@
 import { callClaude } from '../brain/reasoning.js';
 import { MemoryStore } from './store.js';
 import { profileObservations } from './profiler.js';
-import { detectAndStoreMilestones } from './relationship.js';
+import { addMilestone, type MilestoneType } from './relationship.js';
 
 const VALID_CATEGORIES = ['fact', 'commitment', 'preference', 'emotional_state', 'follow_up'] as const;
 type ExtractionCategory = (typeof VALID_CATEGORIES)[number];
+
+const VALID_MILESTONE_TYPES = ['achievement', 'struggle', 'humor', 'growth', 'connection'] as const;
 
 interface Extraction {
   category: ExtractionCategory;
@@ -14,8 +16,14 @@ interface Extraction {
   supersedes?: number;
 }
 
+interface MilestoneExtraction {
+  type: MilestoneType;
+  content: string;
+}
+
 interface ExtractionResult {
   extractions: Extraction[];
+  milestones?: MilestoneExtraction[];
 }
 
 /**
@@ -25,9 +33,10 @@ interface ExtractionResult {
  * as superseded — not deleted, just no longer active.
  */
 
-const EXTRACTION_SYSTEM_PROMPT = `You extract structured facts from conversations between Edwin (a personal life companion) and Jan (his user). Output JSON only, no other text.
+const EXTRACTION_SYSTEM_PROMPT = `You extract structured facts AND detect significant moments from conversations between Edwin (a personal life companion) and Jan (his user). Output JSON only, no other text.
 
-Analyze the conversation and extract any of the following:
+## PART 1: Memory Extraction
+Extract any of the following:
 - fact: Something Jan stated as true ("I have a meeting Thursday", "I weigh 82kg", "My car needs service")
 - commitment: Something Jan said he will do ("I'll go to the gym tomorrow", "I'll call the electrician")
 - preference: A like, dislike, or preference Jan expressed ("I prefer morning workouts", "I hate video calls")
@@ -41,16 +50,27 @@ Examples of superseding:
 - Existing: [id:8] "Jan will go to the gym" → Jan says "I went to the gym" → supersedes id 8 (commitment fulfilled)
 Do NOT supersede if the new info is simply additional (e.g., two different meetings are not contradictions).
 
-Rules:
+## PART 2: Milestone Detection
+Identify significant moments worth remembering permanently. These are NOT ordinary facts — they are meaningful events in Jan's life that Edwin should remember forever. Types:
+- achievement: Big wins, contracts, personal bests, career victories, financial milestones ("Closed the biggest deal of my career", "Hit a 30-day gym streak")
+- struggle: Setbacks, losses, tough days, failures ("Lost our biggest client", "Got rejected from the investment round")
+- growth: Personal growth moments, mindset shifts, new habits sticking ("I realized I need to stop procrastinating", "First month of consistent morning routine")
+- humor: Genuinely funny exchanges, inside jokes worth remembering ("That hilarious coffee machine incident")
+- connection: Moments where Jan and Edwin's relationship deepened, genuine appreciation ("Thank you Edwin, you really helped me today")
+
+Only flag TRUE milestones — not every conversation has one. Most don't. A milestone is something Jan or Edwin would reference months later: "Remember when you..."
+
+## Rules
 - Only extract what is clearly stated or strongly implied. Do not invent or speculate.
 - Write each extraction from Edwin's perspective (third person about Jan).
 - Keep extractions concise — one clear fact per entry.
 - Set confidence between 0.5 and 1.0 based on how certain the information is.
-- If the conversation contains nothing worth extracting, return an empty array.
+- If the conversation contains nothing worth extracting, return empty arrays.
+- Milestones should be summarised in 1-2 sentences max.
 
-Output format:
-{"extractions": [{"category": "fact", "content": "...", "confidence": 0.9, "supersedes": 5}, ...]}
-(omit "supersedes" if this is new information, not an update)`;
+## Output format
+{"extractions": [{"category": "fact", "content": "...", "confidence": 0.9, "supersedes": 5}, ...], "milestones": [{"type": "achievement", "content": "Jan closed the biggest solar contract of his career"}, ...]}
+(omit "supersedes" if this is new information; omit "milestones" if none detected)`;
 
 /**
  * Extract memories from a conversation and store them as observations.
@@ -139,14 +159,18 @@ export async function extractMemories(
       });
     }
 
-    // Detect milestones (significant moments worth remembering permanently)
-    try {
-      const milestones = detectAndStoreMilestones(store, messages);
-      if (milestones > 0) {
-        console.log(`[memory-extraction] ${milestones} milestone(s) detected`);
+    // Store milestones detected by Claude (permanent relationship memory)
+    if (result.milestones && Array.isArray(result.milestones)) {
+      let milestoneCount = 0;
+      for (const m of result.milestones) {
+        if (isValidMilestoneType(m.type) && m.content) {
+          addMilestone(store, m.type, m.content);
+          milestoneCount++;
+        }
       }
-    } catch (err) {
-      console.error('[memory-extraction] Milestone detection failed:', err);
+      if (milestoneCount > 0) {
+        console.log(`[memory-extraction] ${milestoneCount} milestone(s) detected`);
+      }
     }
   } catch (err) {
     console.error('[memory-extraction] Failed:', err);
@@ -155,4 +179,8 @@ export async function extractMemories(
 
 function isValidCategory(category: string): category is ExtractionCategory {
   return VALID_CATEGORIES.includes(category as ExtractionCategory);
+}
+
+function isValidMilestoneType(type: string): type is MilestoneType {
+  return VALID_MILESTONE_TYPES.includes(type as typeof VALID_MILESTONE_TYPES[number]);
 }

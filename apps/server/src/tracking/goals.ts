@@ -1,22 +1,16 @@
 /**
- * Goal Tracking & Vision Progress — Session 37.
+ * Goal Tracking & Vision Progress — Session 37 (upgraded).
  *
- * Edwin tracks Jan's progress toward his 5-year vision:
- *   - €6M net worth → current net worth, savings rate, trajectory
- *   - €15M company revenue → current revenue, growth rate
- *   - Perfect fitness → gym consistency, health markers
- *   - Social goals → contact frequency, relationship quality
- *   - Lifestyle → house, apartment, car, boat
- *   - Personal → partner, child, network
+ * Goals are stored in the `goals` table — fully dynamic, CRUD-able.
+ * Vision goals are seeded on first boot; Jan can add/modify goals
+ * through conversation or the API.
  *
- * Goals are stored as identity entries (category: 'goal').
  * Progress snapshots stored as observations (category: 'goal_progress').
  * Monthly review cron generates trajectory analysis.
  */
 
 import { MemoryStore } from '../memory/store.js';
 import { getHabitStats, type HabitName } from './habits.js';
-import { getSpendingSummary } from './finances.js';
 import { getAllPeople, getOverduePeople } from './social.js';
 
 // ── Types ────────────────────────────────────────────────────────
@@ -51,71 +45,118 @@ export interface GoalSnapshot {
   topConcern: string | null;
 }
 
-// ── Default Vision Goals ────────────────────────────────────────
+// ── Vision Goals (seeded on first boot) ─────────────────────────
 
-const VISION_GOALS: Omit<Goal, 'currentValue' | 'lastUpdated'>[] = [
-  {
-    id: 'net_worth',
-    name: 'Net Worth',
-    category: 'financial',
-    target: 6_000_000,
-    unit: 'EUR',
-    deadline: '2031-12-31',
-  },
-  {
-    id: 'company_revenue',
-    name: 'Company Revenue',
-    category: 'financial',
-    target: 15_000_000,
-    unit: 'EUR/year',
-    deadline: '2031-12-31',
-  },
-  {
-    id: 'gym_consistency',
-    name: 'Gym Consistency',
-    category: 'fitness',
-    target: 4,
-    unit: 'sessions/week',
-    deadline: '2031-12-31',
-  },
-  {
-    id: 'social_network',
-    name: 'Active Social Network',
-    category: 'social',
-    target: 15,
-    unit: 'active contacts',
-    deadline: '2031-12-31',
-  },
+interface GoalSeed {
+  id: string;
+  name: string;
+  category: GoalCategory;
+  target: number;
+  unit: string;
+  deadline: string;
+}
+
+const VISION_GOALS: GoalSeed[] = [
+  { id: 'net_worth', name: 'Net Worth', category: 'financial', target: 6_000_000, unit: 'EUR', deadline: '2031-12-31' },
+  { id: 'company_revenue', name: 'Company Revenue', category: 'financial', target: 15_000_000, unit: 'EUR/year', deadline: '2031-12-31' },
+  { id: 'gym_consistency', name: 'Gym Consistency', category: 'fitness', target: 4, unit: 'sessions/week', deadline: '2031-12-31' },
+  { id: 'social_network', name: 'Active Social Network', category: 'social', target: 15, unit: 'active contacts', deadline: '2031-12-31' },
 ];
 
-// ── Goal Management ─────────────────────────────────────────────
+/**
+ * Seed vision goals into the goals table (called once on first boot).
+ */
+export function seedVisionGoals(store: MemoryStore): void {
+  const db = store.raw();
+  const insert = db.prepare(`
+    INSERT OR IGNORE INTO goals (id, name, category, target, unit, deadline)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
+
+  for (const g of VISION_GOALS) {
+    insert.run(g.id, g.name, g.category, g.target, g.unit, g.deadline);
+  }
+}
+
+// ── Goal CRUD ───────────────────────────────────────────────────
+
+interface GoalRow {
+  id: string;
+  name: string;
+  category: string;
+  target: number;
+  unit: string;
+  deadline: string;
+  current_value: number;
+  updated_at: string;
+}
 
 /**
  * Get all goals with current progress values.
- * Pulls stored values from identity table, enriches with live data.
+ * Enriches with live data for trackable goals (gym, social).
  */
 export function getGoals(store: MemoryStore): Goal[] {
-  return VISION_GOALS.map((template) => {
-    const stored = store.getIdentity('goal', template.id);
-    const currentValue = stored ? parseFloat(stored.value) : 0;
-    const lastUpdated = stored ? stored.updated_at : null;
+  const db = store.raw();
+  const rows = db.prepare('SELECT * FROM goals ORDER BY category, name').all() as GoalRow[];
 
-    // Enrich with live data for trackable goals
-    const liveValue = getLiveGoalValue(store, template.id);
-
+  return rows.map((row) => {
+    const liveValue = getLiveGoalValue(store, row.id);
     return {
-      ...template,
-      currentValue: liveValue !== null ? liveValue : currentValue,
-      lastUpdated,
+      id: row.id,
+      name: row.name,
+      category: row.category as GoalCategory,
+      target: row.target,
+      unit: row.unit,
+      deadline: row.deadline,
+      currentValue: liveValue !== null ? liveValue : row.current_value,
+      lastUpdated: row.updated_at,
     };
   });
+}
+
+/**
+ * Add a new goal.
+ */
+export function addGoal(
+  store: MemoryStore,
+  id: string,
+  name: string,
+  category: GoalCategory,
+  target: number,
+  unit: string,
+  deadline: string,
+): void {
+  const db = store.raw();
+  db.prepare(`
+    INSERT INTO goals (id, name, category, target, unit, deadline)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      name = excluded.name,
+      category = excluded.category,
+      target = excluded.target,
+      unit = excluded.unit,
+      deadline = excluded.deadline,
+      updated_at = CURRENT_TIMESTAMP
+  `).run(id, name, category, target, unit, deadline);
 }
 
 /**
  * Update a goal's current value.
  */
 export function updateGoalValue(store: MemoryStore, goalId: string, value: number): void {
-  store.setIdentity('goal', goalId, String(value), 'told', 1.0);
+  const db = store.raw();
+  db.prepare(`
+    UPDATE goals SET current_value = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+  `).run(value, goalId);
+}
+
+/**
+ * Remove a goal.
+ */
+export function removeGoal(store: MemoryStore, goalId: string): boolean {
+  const db = store.raw();
+  const result = db.prepare('DELETE FROM goals WHERE id = ?').run(goalId);
+  return result.changes > 0;
 }
 
 /**
@@ -129,7 +170,6 @@ function getLiveGoalValue(store: MemoryStore, goalId: string): number | null {
     }
     case 'social_network': {
       const people = getAllPeople(store);
-      // Active = contacted within their frequency goal, or within 30 days
       const active = people.filter((p) => {
         if (p.daysSinceContact === null) return false;
         return p.daysSinceContact <= 30;
@@ -154,12 +194,10 @@ export function calculateProgress(goal: Goal, referenceDate?: Date): GoalProgres
     ? Math.min(100, Math.round((goal.currentValue / goal.target) * 100))
     : 0;
 
-  // Calculate rate per month based on how long the goal has been tracked
-  const startDate = new Date('2026-03-01T00:00:00Z'); // approximate start of tracking
+  const startDate = new Date('2026-03-01T00:00:00Z');
   const monthsElapsed = Math.max(1, monthsBetween(startDate, now));
   const ratePerMonth = goal.currentValue / monthsElapsed;
 
-  // Project completion
   let projectedCompletion: string | null = null;
   let onTrack = false;
   let accelerationNeeded: number | null = null;
@@ -200,7 +238,6 @@ export function getGoalSnapshot(store: MemoryStore, referenceDate?: Date): GoalS
   const goals = getGoals(store);
   const progressList = goals.map((g) => calculateProgress(g, referenceDate));
 
-  // Weighted overall score
   const weights: Record<GoalCategory, number> = {
     financial: 3,
     fitness: 2,
@@ -218,13 +255,11 @@ export function getGoalSnapshot(store: MemoryStore, referenceDate?: Date): GoalS
   }
   const overallScore = totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 0;
 
-  // Top win = highest percentage goal
   const sorted = [...progressList].sort((a, b) => b.percentage - a.percentage);
   const topWin = sorted.length > 0 && sorted[0].percentage > 0
     ? `${sorted[0].goal.name}: ${sorted[0].percentage}%`
     : null;
 
-  // Top concern = most behind-schedule goal
   const behindSchedule = progressList.filter((p) => !p.onTrack && p.percentage < 100);
   behindSchedule.sort((a, b) => (a.percentage - b.percentage));
   const topConcern = behindSchedule.length > 0
@@ -236,10 +271,6 @@ export function getGoalSnapshot(store: MemoryStore, referenceDate?: Date): GoalS
 
 // ── Monthly Review ──────────────────────────────────────────────
 
-/**
- * Generate a monthly goal progress snapshot.
- * Stored as an observation for memory and used in reasoning context.
- */
 export function generateMonthlySnapshot(store: MemoryStore, referenceDate?: Date): string {
   const snapshot = getGoalSnapshot(store, referenceDate);
   const now = referenceDate || new Date();
@@ -258,7 +289,6 @@ export function generateMonthlySnapshot(store: MemoryStore, referenceDate?: Date
     lines.push(`  ${p.goal.name}: ${valueStr} → ${pctStr} — ${trackStr}`);
   }
 
-  // Store as observation
   const content = lines.join('\n');
   store.addObservation('goal_progress', content, 1.0, 'told');
 
@@ -267,14 +297,9 @@ export function generateMonthlySnapshot(store: MemoryStore, referenceDate?: Date
 
 // ── Context for Reasoning ───────────────────────────────────────
 
-/**
- * Format goal progress for the reasoning context.
- * Returns null if no meaningful data.
- */
 export function formatGoalContext(store: MemoryStore, referenceDate?: Date): string | null {
   const snapshot = getGoalSnapshot(store, referenceDate);
 
-  // Only show if there's any progress at all
   const hasData = snapshot.goals.some((g) => g.goal.currentValue > 0);
   if (!hasData) return null;
 
@@ -301,7 +326,6 @@ export function formatGoalContext(store: MemoryStore, referenceDate?: Date): str
 
 /**
  * Get motivational snippets based on goal progress.
- * Used by reasoning context to add goal-aware messaging.
  */
 export function getGoalMotivation(store: MemoryStore): string | null {
   const snapshot = getGoalSnapshot(store);
