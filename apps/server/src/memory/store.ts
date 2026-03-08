@@ -158,13 +158,35 @@ export class MemoryStore {
     `).get(channel) as ConversationRow | undefined;
   }
 
+  // ── Observation Queries ────────────────────────────────────────────
+
+  /** Get all active (unexpired) observations, most recent first */
+  getActiveObservations(limit: number = 50): ObservationRow[] {
+    return this.db.raw().prepare(`
+      SELECT * FROM observations
+      WHERE (expires_at IS NULL OR expires_at > datetime('now'))
+      ORDER BY observed_at DESC, id DESC
+      LIMIT ?
+    `).all(limit) as ObservationRow[];
+  }
+
+  /** Get all observations of a specific category that haven't expired */
+  getActiveObservationsByCategory(category: string): ObservationRow[] {
+    return this.db.raw().prepare(`
+      SELECT * FROM observations
+      WHERE category = ?
+        AND (expires_at IS NULL OR expires_at > datetime('now'))
+      ORDER BY observed_at DESC, id DESC
+    `).all(category) as ObservationRow[];
+  }
+
   // ── Memory Snapshot ────────────────────────────────────────────────
 
-  buildMemorySnapshot(): string {
+  /** Raw identity snapshot — structured data about Jan */
+  buildIdentitySnapshot(): string {
     const allIdentity = this.getAllIdentity();
     const lines: string[] = [];
 
-    // Group identity by category
     const grouped: Record<string, IdentityRow[]> = {};
     for (const row of allIdentity) {
       if (!grouped[row.category]) {
@@ -181,27 +203,69 @@ export class MemoryStore {
       }
     }
 
-    // Recent observations with confidence markers
-    const observationCategories = this.db.raw().prepare(`
-      SELECT DISTINCT category FROM observations
-      WHERE observed_at >= datetime('now', '-7 days')
-        AND (expires_at IS NULL OR expires_at > datetime('now'))
-    `).all() as { category: string }[];
+    return lines.join('\n');
+  }
 
-    if (observationCategories.length > 0) {
-      lines.push('\n=== RECENT OBSERVATIONS ===');
-      for (const { category } of observationCategories) {
-        const observations = this.getRecentObservations(category, 7);
-        if (observations.length > 0) {
-          lines.push(`\n[${category}]`);
-          for (const obs of observations) {
-            const marker = obs.confidence >= 0.7 ? '[confirmed]' : '[tentative]';
-            lines.push(`  ${marker} ${obs.content}`);
-          }
-        }
+  /**
+   * Build a natural-language memory context for Claude's system prompt.
+   * Prioritizes: commitments > follow-ups > emotional states > facts > preferences
+   * Formatted as natural text, capped to stay concise.
+   */
+  buildMemorySnapshot(): string {
+    const identitySnapshot = this.buildIdentitySnapshot();
+
+    // Retrieve active observations by priority category
+    const commitments = this.getActiveObservationsByCategory('commitment');
+    const followUps = this.getActiveObservationsByCategory('follow_up');
+    const emotions = this.getActiveObservationsByCategory('emotional_state');
+    const facts = this.getActiveObservationsByCategory('fact');
+    const preferences = this.getActiveObservationsByCategory('preference');
+
+    const memoryLines: string[] = [];
+
+    // Commitments — always include (these are active promises)
+    if (commitments.length > 0) {
+      memoryLines.push('Active commitments from Jan:');
+      for (const c of commitments.slice(0, 5)) {
+        memoryLines.push(`- ${c.content}`);
       }
     }
 
-    return lines.join('\n');
+    // Follow-ups — always include (Edwin needs to check back)
+    if (followUps.length > 0) {
+      memoryLines.push('Things to follow up on:');
+      for (const f of followUps.slice(0, 5)) {
+        memoryLines.push(`- ${f.content}`);
+      }
+    }
+
+    // Emotional state — most recent only
+    if (emotions.length > 0) {
+      memoryLines.push(`Jan's recent mood: ${emotions[0].content}`);
+    }
+
+    // Facts — recent, limit to keep concise
+    if (facts.length > 0) {
+      memoryLines.push('Recent things Jan mentioned:');
+      for (const f of facts.slice(0, 8)) {
+        memoryLines.push(`- ${f.content}`);
+      }
+    }
+
+    // Preferences — limit to most recent
+    if (preferences.length > 0) {
+      memoryLines.push('Known preferences:');
+      for (const p of preferences.slice(0, 5)) {
+        memoryLines.push(`- ${p.content}`);
+      }
+    }
+
+    // Combine identity + living memory
+    const sections = [identitySnapshot];
+    if (memoryLines.length > 0) {
+      sections.push('\n=== WHAT YOU REMEMBER ===\n' + memoryLines.join('\n'));
+    }
+
+    return sections.join('\n');
   }
 }

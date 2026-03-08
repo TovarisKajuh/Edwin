@@ -61,13 +61,36 @@ describe('MemoryStore', () => {
     expect(recent[1].content).toBe('Jan seemed tired');
   });
 
+  // ── Active Observations ─────────────────────────────────────────
+
+  it('should getActiveObservations excluding expired', () => {
+    store.addObservation('fact', 'Active fact', 0.9, 'observed', '2099-01-01T00:00:00Z');
+    store.addObservation('fact', 'Expired fact', 0.9, 'observed', '2000-01-01T00:00:00Z');
+    store.addObservation('fact', 'No expiry fact', 0.9, 'observed');
+
+    const active = store.getActiveObservations();
+    expect(active).toHaveLength(2);
+    expect(active.map(o => o.content)).toContain('Active fact');
+    expect(active.map(o => o.content)).toContain('No expiry fact');
+    expect(active.map(o => o.content)).not.toContain('Expired fact');
+  });
+
+  it('should getActiveObservationsByCategory', () => {
+    store.addObservation('commitment', 'Go to gym', 0.9, 'observed', '2099-01-01T00:00:00Z');
+    store.addObservation('fact', 'Weighs 82kg', 0.9, 'observed', '2099-01-01T00:00:00Z');
+    store.addObservation('commitment', 'Call electrician', 0.9, 'observed', '2099-01-01T00:00:00Z');
+
+    const commitments = store.getActiveObservationsByCategory('commitment');
+    expect(commitments).toHaveLength(2);
+    expect(commitments.map(o => o.content)).toContain('Go to gym');
+    expect(commitments.map(o => o.content)).toContain('Call electrician');
+  });
+
   // ── Memory Snapshot ──────────────────────────────────────────────
 
-  it('should buildMemorySnapshot including identity and observations', () => {
+  it('should buildMemorySnapshot with identity section', () => {
     store.setIdentity('personal', 'location', 'Austria', 'told');
     store.setIdentity('goals', 'car', 'Ferrari', 'told');
-    store.addObservation('mood', 'Feeling good', 0.9, 'observed');
-    store.addObservation('mood', 'Low energy', 0.4, 'observed');
 
     const snapshot = store.buildMemorySnapshot();
 
@@ -76,9 +99,37 @@ describe('MemoryStore', () => {
     expect(snapshot).toContain('car: Ferrari');
     expect(snapshot).toContain('[personal]');
     expect(snapshot).toContain('location: Austria');
-    expect(snapshot).toContain('=== RECENT OBSERVATIONS ===');
-    expect(snapshot).toContain('[confirmed] Feeling good');
-    expect(snapshot).toContain('[tentative] Low energy');
+  });
+
+  it('should buildMemorySnapshot with prioritized observations', () => {
+    store.addObservation('commitment', 'Jan will go to the gym tomorrow', 0.9, 'observed', '2099-01-01T00:00:00Z');
+    store.addObservation('follow_up', 'Ask about the meeting', 0.8, 'observed', '2099-01-01T00:00:00Z');
+    store.addObservation('emotional_state', 'Jan seems stressed', 0.7, 'observed', '2099-01-01T00:00:00Z');
+    store.addObservation('fact', 'Jan has a supplier meeting Friday', 0.95, 'observed', '2099-01-01T00:00:00Z');
+    store.addObservation('preference', 'Jan prefers morning workouts', 0.85, 'observed', '2099-01-01T00:00:00Z');
+
+    const snapshot = store.buildMemorySnapshot();
+
+    expect(snapshot).toContain('=== WHAT YOU REMEMBER ===');
+    expect(snapshot).toContain('Active commitments from Jan:');
+    expect(snapshot).toContain('Jan will go to the gym tomorrow');
+    expect(snapshot).toContain('Things to follow up on:');
+    expect(snapshot).toContain('Ask about the meeting');
+    expect(snapshot).toContain("Jan's recent mood: Jan seems stressed");
+    expect(snapshot).toContain('Recent things Jan mentioned:');
+    expect(snapshot).toContain('Jan has a supplier meeting Friday');
+    expect(snapshot).toContain('Known preferences:');
+    expect(snapshot).toContain('Jan prefers morning workouts');
+  });
+
+  it('should exclude expired observations from memory snapshot', () => {
+    store.addObservation('fact', 'Current fact', 0.9, 'observed', '2099-01-01T00:00:00Z');
+    store.addObservation('fact', 'Expired fact', 0.9, 'observed', '2000-01-01T00:00:00Z');
+
+    const snapshot = store.buildMemorySnapshot();
+
+    expect(snapshot).toContain('Current fact');
+    expect(snapshot).not.toContain('Expired fact');
   });
 
   // ── Seed Profile ─────────────────────────────────────────────────
