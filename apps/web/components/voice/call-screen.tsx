@@ -14,54 +14,55 @@ export function CallScreen() {
   const conversationIdRef = useRef<number | undefined>(undefined);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const { recording, supported, startRecording, stopRecording } = useMediaRecorder();
+  const processAudio = useCallback(async (blob: Blob) => {
+    if (blob.size < 1000) {
+      setCallState('idle');
+      return;
+    }
+
+    setCallState('processing');
+
+    try {
+      const result = await sendVoiceAudio(blob, conversationIdRef.current);
+      conversationIdRef.current = result.conversationId;
+      setLastTranscript(result.transcript);
+      setLastResponse(result.message);
+
+      if (result.audio.byteLength > 1000) {
+        const audioBlob = new Blob([result.audio], { type: 'audio/mpeg' });
+        const url = URL.createObjectURL(audioBlob);
+        const audioEl = new Audio(url);
+        audioRef.current = audioEl;
+        setCallState('speaking');
+
+        audioEl.onended = () => {
+          URL.revokeObjectURL(url);
+          setCallState('idle');
+        };
+        audioEl.onerror = () => {
+          URL.revokeObjectURL(url);
+          setCallState('idle');
+        };
+        await audioEl.play();
+      } else {
+        setCallState('idle');
+      }
+    } catch (e) {
+      console.error('[Voice] Error:', e);
+      setCallState('idle');
+    }
+  }, []);
+
+  const { recording, supported, startRecording, stopRecording } = useMediaRecorder({
+    silenceThreshold: 15,
+    silenceTimeout: 1500,
+    onRecordingComplete: processAudio,
+  });
 
   const handleMicPress = useCallback(async () => {
     if (recording) {
-      // Stop recording → send to server for transcription + response
-      const blob = await stopRecording();
-      if (!blob || blob.size < 1000) {
-        setCallState('idle');
-        return;
-      }
-
-      setCallState('processing');
-
-      try {
-        const result = await sendVoiceAudio(blob, conversationIdRef.current);
-        conversationIdRef.current = result.conversationId;
-        setLastTranscript(result.transcript);
-        setLastResponse(result.message);
-
-        // Play TTS response if we got audio
-        if (result.audio.byteLength > 1000) {
-          const audioBlob = new Blob([result.audio], { type: 'audio/mpeg' });
-          const url = URL.createObjectURL(audioBlob);
-          const audioEl = new Audio(url);
-          audioRef.current = audioEl;
-
-          setCallState('speaking');
-
-          audioEl.onended = () => {
-            URL.revokeObjectURL(url);
-            setCallState('idle');
-          };
-
-          audioEl.onerror = () => {
-            URL.revokeObjectURL(url);
-            setCallState('idle');
-          };
-
-          await audioEl.play();
-        } else {
-          setCallState('idle');
-        }
-      } catch (e) {
-        console.error('[Voice] Error:', e);
-        setCallState('idle');
-      }
+      stopRecording(); // manual stop → onRecordingComplete fires → processAudio
     } else {
-      // Start recording
       try {
         await startRecording();
         setCallState('listening');
@@ -80,10 +81,8 @@ export function CallScreen() {
     conversationIdRef.current = undefined;
   }, []);
 
-  const handleEndCall = useCallback(async () => {
-    if (recording) {
-      await stopRecording(); // discard
-    }
+  const handleEndCall = useCallback(() => {
+    if (recording) stopRecording();
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
@@ -98,35 +97,24 @@ export function CallScreen() {
   const micDisabled = callState === 'processing' || callState === 'speaking';
 
   const avatarClasses = (() => {
-    if (!inCall) {
-      return 'w-32 h-32 rounded-full bg-zinc-800 border-2 border-amber-400/30 flex items-center justify-center';
-    }
+    if (!inCall) return 'w-32 h-32 rounded-full bg-zinc-800 border-2 border-amber-400/30 flex items-center justify-center';
     switch (callState) {
-      case 'speaking':
-        return 'w-32 h-32 rounded-full bg-amber-400/20 border-2 border-amber-400 flex items-center justify-center animate-pulse';
-      case 'listening':
-        return 'w-32 h-32 rounded-full bg-green-400/20 border-2 border-green-400 flex items-center justify-center';
-      case 'processing':
-        return 'w-32 h-32 rounded-full bg-blue-400/20 border-2 border-blue-400 flex items-center justify-center animate-pulse';
-      default:
-        return 'w-32 h-32 rounded-full bg-zinc-800 border-2 border-zinc-700 flex items-center justify-center';
+      case 'speaking': return 'w-32 h-32 rounded-full bg-amber-400/20 border-2 border-amber-400 flex items-center justify-center animate-pulse';
+      case 'listening': return 'w-32 h-32 rounded-full bg-green-400/20 border-2 border-green-400 flex items-center justify-center';
+      case 'processing': return 'w-32 h-32 rounded-full bg-blue-400/20 border-2 border-blue-400 flex items-center justify-center animate-pulse';
+      default: return 'w-32 h-32 rounded-full bg-zinc-800 border-2 border-zinc-700 flex items-center justify-center';
     }
   })();
 
   const statusText = (() => {
     switch (callState) {
-      case 'listening':
-        return 'Listening... tap mic when done';
-      case 'processing':
-        return 'Thinking...';
-      case 'speaking':
-        return 'Speaking...';
-      default:
-        return 'Tap the mic to speak';
+      case 'listening': return 'Listening...';
+      case 'processing': return 'Thinking...';
+      case 'speaking': return 'Speaking...';
+      default: return 'Tap the mic to speak';
     }
   })();
 
-  // Pre-call view
   if (!inCall) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-8">
@@ -137,9 +125,7 @@ export function CallScreen() {
           <h2 className="text-xl font-semibold text-zinc-100">Edwin</h2>
           <p className="mt-1 text-sm text-zinc-500">Ready to speak, sir.</p>
           {!supported && (
-            <p className="mt-2 text-xs text-red-400">
-              Audio recording is not supported in this browser.
-            </p>
+            <p className="mt-2 text-xs text-red-400">Audio recording is not supported in this browser.</p>
           )}
         </div>
         <button
@@ -148,24 +134,14 @@ export function CallScreen() {
           className="flex h-16 w-16 items-center justify-center rounded-full bg-green-600 text-white transition-colors hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-50"
           aria-label="Start call"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            className="h-7 w-7"
-          >
-            <path
-              fillRule="evenodd"
-              d="M1.5 4.5a3 3 0 013-3h1.372c.86 0 1.61.586 1.819 1.42l1.105 4.423a1.875 1.875 0 01-.694 1.955l-1.293.97c-.135.101-.164.249-.126.352a11.285 11.285 0 006.697 6.697c.103.038.25.009.352-.126l.97-1.293a1.875 1.875 0 011.955-.694l4.423 1.105c.834.209 1.42.959 1.42 1.82V19.5a3 3 0 01-3 3h-2.25C8.552 22.5 1.5 15.448 1.5 6.75V4.5z"
-              clipRule="evenodd"
-            />
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-7 w-7">
+            <path fillRule="evenodd" d="M1.5 4.5a3 3 0 013-3h1.372c.86 0 1.61.586 1.819 1.42l1.105 4.423a1.875 1.875 0 01-.694 1.955l-1.293.97c-.135.101-.164.249-.126.352a11.285 11.285 0 006.697 6.697c.103.038.25.009.352-.126l.97-1.293a1.875 1.875 0 011.955-.694l4.423 1.105c.834.209 1.42.959 1.42 1.82V19.5a3 3 0 01-3 3h-2.25C8.552 22.5 1.5 15.448 1.5 6.75V4.5z" clipRule="evenodd" />
           </svg>
         </button>
       </div>
     );
   }
 
-  // In-call view
   return (
     <div className="flex h-full flex-col items-center justify-center gap-6">
       <div className={avatarClasses}>
@@ -200,12 +176,7 @@ export function CallScreen() {
           } disabled:cursor-not-allowed disabled:opacity-50`}
           aria-label={recording ? 'Stop recording' : 'Start recording'}
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            className="h-6 w-6"
-          >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6">
             <path d="M8.25 4.5a3.75 3.75 0 117.5 0v8.25a3.75 3.75 0 11-7.5 0V4.5z" />
             <path d="M6 10.5a.75.75 0 01.75.75v1.5a5.25 5.25 0 1010.5 0v-1.5a.75.75 0 011.5 0v1.5a6.751 6.751 0 01-6 6.709v2.291h3a.75.75 0 010 1.5h-7.5a.75.75 0 010-1.5h3v-2.291a6.751 6.751 0 01-6-6.709v-1.5A.75.75 0 016 10.5z" />
           </svg>
@@ -216,17 +187,8 @@ export function CallScreen() {
           className="flex h-14 w-14 items-center justify-center rounded-full bg-red-600 text-white transition-colors hover:bg-red-500"
           aria-label="End call"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            className="h-6 w-6"
-          >
-            <path
-              fillRule="evenodd"
-              d="M1.5 4.5a3 3 0 013-3h1.372c.86 0 1.61.586 1.819 1.42l1.105 4.423a1.875 1.875 0 01-.694 1.955l-1.293.97c-.135.101-.164.249-.126.352a11.285 11.285 0 006.697 6.697c.103.038.25.009.352-.126l.97-1.293a1.875 1.875 0 011.955-.694l4.423 1.105c.834.209 1.42.959 1.42 1.82V19.5a3 3 0 01-3 3h-2.25C8.552 22.5 1.5 15.448 1.5 6.75V4.5z"
-              clipRule="evenodd"
-            />
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6">
+            <path fillRule="evenodd" d="M1.5 4.5a3 3 0 013-3h1.372c.86 0 1.61.586 1.819 1.42l1.105 4.423a1.875 1.875 0 01-.694 1.955l-1.293.97c-.135.101-.164.249-.126.352a11.285 11.285 0 006.697 6.697c.103.038.25.009.352-.126l.97-1.293a1.875 1.875 0 011.955-.694l4.423 1.105c.834.209 1.42.959 1.42 1.82V19.5a3 3 0 01-3 3h-2.25C8.552 22.5 1.5 15.448 1.5 6.75V4.5z" clipRule="evenodd" />
           </svg>
         </button>
       </div>
