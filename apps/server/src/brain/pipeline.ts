@@ -60,6 +60,7 @@ export class BrainPipeline {
       contextSignal,
       reasoningBrief: ctx.reasoningBrief,
       evaluationContext: ctx.evaluationContext,
+      temporalContext: ctx.temporalContext,
     });
 
     // 5. Format conversation history for Claude
@@ -132,6 +133,7 @@ export class BrainPipeline {
       contextSignal,
       reasoningBrief: ctx.reasoningBrief,
       evaluationContext: ctx.evaluationContext,
+      temporalContext: ctx.temporalContext,
     });
 
     // 5. Format conversation history

@@ -5,6 +5,7 @@ import { checkHealth, formatHealthWarnings } from './self-awareness.js';
 import { computeSoulDirectives, formatSoulDirectives } from '../soul/soul-filter.js';
 import { buildReasoningBrief, formatReasoningBrief } from './reasoning-context.js';
 import { assessCapacity, formatEvaluationContext } from './thinking/evaluator.js';
+import { buildTemporalContext, formatTemporalContext } from './temporal-context.js';
 
 export interface BrainContext {
   timeOfDay: TimeOfDay;
@@ -15,6 +16,7 @@ export interface BrainContext {
   soulDirectives: string;
   reasoningBrief: string;
   evaluationContext: string | null;
+  temporalContext: string;
   conversationHistory: { role: string; content: string }[];
 }
 
@@ -61,6 +63,10 @@ export function buildContext(
   const capacity = assessCapacity(store, timeOfDay, dayType);
   const evaluationContext = formatEvaluationContext(capacity);
 
+  // Build deep temporal awareness
+  const temporal = buildTemporalContext(now);
+  const temporalContext = formatTemporalContext(temporal);
+
   return {
     timeOfDay,
     dayType,
@@ -70,6 +76,7 @@ export function buildContext(
     soulDirectives,
     reasoningBrief,
     evaluationContext,
+    temporalContext,
     conversationHistory,
   };
 }
