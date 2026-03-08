@@ -1,6 +1,7 @@
 import { callClaude } from '../brain/reasoning.js';
 import { MemoryStore } from './store.js';
 import { profileObservations } from './profiler.js';
+import { detectAndStoreMilestones } from './relationship.js';
 
 const VALID_CATEGORIES = ['fact', 'commitment', 'preference', 'emotional_state', 'follow_up'] as const;
 type ExtractionCategory = (typeof VALID_CATEGORIES)[number];
@@ -136,6 +137,16 @@ export async function extractMemories(
       profileObservations(store, newObservations).catch((err) => {
         console.error('[memory-extraction] Profiling failed:', err);
       });
+    }
+
+    // Detect milestones (significant moments worth remembering permanently)
+    try {
+      const milestones = detectAndStoreMilestones(store, messages);
+      if (milestones > 0) {
+        console.log(`[memory-extraction] ${milestones} milestone(s) detected`);
+      }
+    } catch (err) {
+      console.error('[memory-extraction] Milestone detection failed:', err);
     }
   } catch (err) {
     console.error('[memory-extraction] Failed:', err);

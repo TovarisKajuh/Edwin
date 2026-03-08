@@ -14,6 +14,7 @@ import { generatePredictions, formatPredictions } from './understanding/predicto
 import { getTopPriorities, formatPriorities } from './thinking/priority-engine.js';
 import { getGoalMotivation } from '../tracking/goals.js';
 import { detectConflicts, getConflictSummary } from './thinking/conflict-resolver.js';
+import { formatRelationshipContext } from '../memory/relationship.js';
 
 export interface ReasoningBrief {
   temporal: string;
@@ -24,6 +25,7 @@ export interface ReasoningBrief {
   knownPatterns: string[];
   predictions: string[];
   priorities: string[];
+  relationshipContext: string | null;
 }
 
 /**
@@ -175,6 +177,9 @@ export function buildReasoningBrief(
   const topPriorities = getTopPriorities(store, timeOfDay, recentMood);
   const priorities = formatPriorities(topPriorities);
 
+  // ── Relationship context ──────────────────────────────────────
+  const relationshipContext = formatRelationshipContext(store);
+
   return {
     temporal,
     awareness,
@@ -184,6 +189,7 @@ export function buildReasoningBrief(
     knownPatterns,
     predictions,
     priorities,
+    relationshipContext,
   };
 }
 
@@ -242,6 +248,11 @@ export function formatReasoningBrief(brief: ReasoningBrief): string {
     for (const a of brief.awareness) {
       lines.push(`  - ${a}`);
     }
+  }
+
+  if (brief.relationshipContext) {
+    lines.push('');
+    lines.push(brief.relationshipContext);
   }
 
   lines.push('');
