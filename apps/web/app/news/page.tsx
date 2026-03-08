@@ -22,11 +22,12 @@ const TOPIC_COLORS: Record<string, string> = {
 export default function NewsPage() {
   const [items, setItems] = useState<DashboardNewsItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     getDashboard()
       .then((data: DashboardData) => setItems(data.recentNews))
-      .catch(() => {})
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
 
@@ -36,7 +37,11 @@ export default function NewsPage() {
 
       {loading && <p className="text-sm text-zinc-500">Loading news...</p>}
 
-      {!loading && items.length === 0 && (
+      {error && (
+        <p className="text-sm text-zinc-500">Could not load news. Please ensure the server is running.</p>
+      )}
+
+      {!loading && !error && items.length === 0 && (
         <p className="text-sm text-zinc-500">No news available right now, sir.</p>
       )}
 

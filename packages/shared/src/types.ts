@@ -39,7 +39,7 @@ export interface VoiceResponse {
 
 export interface BriefingResponse {
   text: string;
-  audio: ArrayBuffer;
+  audio?: string; // base64-encoded audio from server
 }
 
 export interface DashboardData {

@@ -80,6 +80,21 @@ export function Sidebar() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
+  const fetchCount = useCallback(async () => {
+    try {
+      const c = await getNotificationCount();
+      setUnreadCount(c);
+    } catch {
+      // Silently fail
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCount();
+    const interval = setInterval(fetchCount, 30_000);
+    return () => clearInterval(interval);
+  }, [fetchCount]);
+
   return (
     <>
       <aside className="fixed left-0 top-0 z-40 hidden h-full w-64 border-r border-zinc-800 bg-zinc-950 md:block">

@@ -66,10 +66,11 @@ export function NotificationPanel({
   const handleMarkRead = async (id: number) => {
     try {
       await markNotificationRead(id);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
-      );
-      onCountChange(notifications.filter((n) => !n.read && n.id !== id).length);
+      setNotifications((prev) => {
+        const updated = prev.map((n) => (n.id === id ? { ...n, read: true } : n));
+        onCountChange(updated.filter((n) => !n.read).length);
+        return updated;
+      });
     } catch {
       // Silently fail
     }

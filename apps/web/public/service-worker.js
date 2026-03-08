@@ -57,28 +57,8 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
   if (action === 'snooze') {
-    // Re-show notification in 10 minutes
-    event.waitUntil(
-      new Promise((resolve) => {
-        setTimeout(async () => {
-          await self.registration.showNotification(event.notification.title, {
-            body: event.notification.body,
-            icon: '/icon-192.png',
-            badge: '/icon-192.png',
-            data: data,
-            vibrate: [200, 100, 200],
-            tag: data.tag || 'edwin-notification',
-            renotify: true,
-            requireInteraction: true,
-            actions: [
-              { action: 'listen', title: 'Listen to Briefing' },
-              { action: 'snooze', title: 'Snooze 10min' },
-            ],
-          });
-          resolve();
-        }, 10 * 60 * 1000); // 10 minutes
-      })
-    );
+    // Snooze: dismiss now. Service workers can't reliably hold a 10-min timer.
+    // Future: POST to /api/notifications/snooze to schedule server-side re-push.
     return;
   }
 

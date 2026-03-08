@@ -1,45 +1,33 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import type { BriefingResponse } from '@edwin/shared';
 import { getBriefing } from '@/lib/api';
 
-interface BriefingData {
-  text: string;
-  audio?: string; // base64
-  context?: {
-    dayName: string;
-    date: string;
-  };
-}
-
 export default function BriefingPage() {
-  const [data, setData] = useState<BriefingData | null>(null);
+  const [data, setData] = useState<BriefingResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [playing, setPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     getBriefing()
       .then((res) => {
-        setData(res as unknown as BriefingData);
-        // Auto-play audio if available
-        if ((res as unknown as BriefingData).audio) {
-          const audio = new Audio(`data:audio/mpeg;base64,${(res as unknown as BriefingData).audio}`);
+        setData(res);
+        if (res.audio) {
+          const audio = new Audio(`data:audio/mpeg;base64,${res.audio}`);
           audioRef.current = audio;
           audio.onplay = () => setPlaying(true);
           audio.onended = () => setPlaying(false);
           audio.onpause = () => setPlaying(false);
-          audio.play().catch(() => {
-            // Auto-play blocked — user needs to tap play
-          });
+          audio.play().catch(() => {});
         }
       })
-      .catch(() => {})
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
 
-    return () => {
-      audioRef.current?.pause();
-    };
+    return () => { audioRef.current?.pause(); };
   }, []);
 
   const togglePlay = () => {
@@ -59,10 +47,10 @@ export default function BriefingPage() {
     );
   }
 
-  if (!data) {
+  if (error || !data) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="text-zinc-500">Could not load briefing. Try again later.</p>
+        <p className="text-zinc-500">Could not load briefing. Try again later, sir.</p>
       </div>
     );
   }
@@ -101,15 +89,13 @@ export default function BriefingPage() {
       </header>
 
       <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 md:p-8">
-        <div className="prose prose-invert prose-zinc max-w-none">
-          {data.text.split('\n').map((paragraph, i) => (
-            paragraph.trim() ? (
-              <p key={i} className="mb-4 text-sm leading-relaxed text-zinc-300">
-                {paragraph}
-              </p>
-            ) : null
-          ))}
-        </div>
+        {data.text.split('\n').map((paragraph, i) => (
+          paragraph.trim() ? (
+            <p key={i} className="mb-4 text-sm leading-relaxed text-zinc-300">
+              {paragraph}
+            </p>
+          ) : null
+        ))}
       </div>
     </div>
   );

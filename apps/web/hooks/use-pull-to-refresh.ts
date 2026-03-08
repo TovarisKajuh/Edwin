@@ -4,34 +4,37 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 
 interface PullToRefreshOptions {
   onRefresh: () => Promise<void>;
-  threshold?: number; // pixels to pull before triggering
+  threshold?: number;
 }
 
 export function usePullToRefresh({ onRefresh, threshold = 80 }: PullToRefreshOptions) {
-  const [pulling, setPulling] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const startY = useRef(0);
+  const pullingRef = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleTouchStart = useCallback((e: TouchEvent) => {
-    // Only activate at top of scroll
     if (window.scrollY > 0) return;
     startY.current = e.touches[0].clientY;
-    setPulling(true);
+    pullingRef.current = true;
   }, []);
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
-    if (!pulling || refreshing) return;
+    if (!pullingRef.current) return;
     const delta = e.touches[0].clientY - startY.current;
     if (delta > 0) {
       setPullDistance(Math.min(delta * 0.5, threshold * 1.5));
     }
-  }, [pulling, refreshing, threshold]);
+  }, [threshold]);
 
   const handleTouchEnd = useCallback(async () => {
-    if (!pulling) return;
-    if (pullDistance >= threshold && !refreshing) {
+    if (!pullingRef.current) return;
+    pullingRef.current = false;
+
+    // Read current pullDistance from DOM to avoid stale closure
+    const currentDistance = pullDistance;
+    if (currentDistance >= threshold && !refreshing) {
       setRefreshing(true);
       try {
         await onRefresh();
@@ -39,9 +42,8 @@ export function usePullToRefresh({ onRefresh, threshold = 80 }: PullToRefreshOpt
         setRefreshing(false);
       }
     }
-    setPulling(false);
     setPullDistance(0);
-  }, [pulling, pullDistance, threshold, refreshing, onRefresh]);
+  }, [pullDistance, threshold, refreshing, onRefresh]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -56,5 +58,5 @@ export function usePullToRefresh({ onRefresh, threshold = 80 }: PullToRefreshOpt
     };
   }, [handleTouchStart, handleTouchMove, handleTouchEnd]);
 
-  return { containerRef, pulling, refreshing, pullDistance };
+  return { containerRef, refreshing, pullDistance };
 }
