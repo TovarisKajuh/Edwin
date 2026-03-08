@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import multipart from '@fastify/multipart';
 import dotenv from 'dotenv';
 import { Database } from './db/database.js';
 import { MemoryStore } from './memory/store.js';
@@ -22,8 +23,10 @@ const server = Fastify({ logger: true });
 
 await server.register(cors, {
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  exposedHeaders: ['X-Edwin-Message', 'X-Edwin-Conversation-Id'],
+  exposedHeaders: ['X-Edwin-Message', 'X-Edwin-Conversation-Id', 'X-Edwin-Transcript'],
 });
+
+await server.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB max
 
 // ── Authentication: Lock all API routes behind access key ────────
 const ACCESS_KEY = process.env.EDWIN_ACCESS_KEY;

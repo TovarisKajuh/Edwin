@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import { sendVoice } from '@/lib/api';
-import { useSpeechRecognition } from '@/hooks/use-speech-recognition';
+import { sendVoiceAudio } from '@/lib/api';
+import { useMediaRecorder } from '@/hooks/use-media-recorder';
 
 type CallState = 'idle' | 'listening' | 'processing' | 'speaking';
 
@@ -14,76 +14,63 @@ export function CallScreen() {
   const conversationIdRef = useRef<number | undefined>(undefined);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const speakBrowser = useCallback((text: string) => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 0.95;
-      utterance.pitch = 0.9;
-      const voices = window.speechSynthesis.getVoices();
-      const british = voices.find(v => v.lang === 'en-GB' && v.name.includes('Male'));
-      const english = voices.find(v => v.lang === 'en-GB');
-      if (british) utterance.voice = british;
-      else if (english) utterance.voice = english;
-      utterance.onend = () => setCallState('idle');
-      setCallState('speaking');
-      window.speechSynthesis.speak(utterance);
-    } else {
-      setCallState('idle');
-    }
-  }, []);
+  const { recording, supported, startRecording, stopRecording } = useMediaRecorder();
 
-  const handleResult = useCallback(async (transcript: string) => {
-    setLastTranscript(transcript);
-    setCallState('processing');
-
-    try {
-      const result = await sendVoice(transcript, conversationIdRef.current);
-      conversationIdRef.current = result.conversationId;
-      setLastResponse(result.message);
-
-      // Check if we got actual audio data (more than a small JSON response)
-      if (result.audio.byteLength > 1000) {
-        const blob = new Blob([result.audio], { type: 'audio/mpeg' });
-        const url = URL.createObjectURL(blob);
-        const audioEl = new Audio(url);
-        audioRef.current = audioEl;
-
-        setCallState('speaking');
-
-        audioEl.onended = () => {
-          URL.revokeObjectURL(url);
-          setCallState('idle');
-        };
-
-        audioEl.onerror = () => {
-          URL.revokeObjectURL(url);
-          // Fallback to browser TTS
-          speakBrowser(result.message);
-        };
-
-        await audioEl.play();
-      } else {
-        // No server audio — use browser TTS
-        speakBrowser(result.message);
+  const handleMicPress = useCallback(async () => {
+    if (recording) {
+      // Stop recording → send to server for transcription + response
+      const blob = await stopRecording();
+      if (!blob || blob.size < 1000) {
+        setCallState('idle');
+        return;
       }
-    } catch {
-      setCallState('idle');
-    }
-  }, [speakBrowser]);
 
-  const { listening, supported, start, stop } = useSpeechRecognition({
-    onResult: handleResult,
-  });
+      setCallState('processing');
 
-  const handleMicPress = useCallback(() => {
-    if (listening) {
-      stop();
+      try {
+        const result = await sendVoiceAudio(blob, conversationIdRef.current);
+        conversationIdRef.current = result.conversationId;
+        setLastTranscript(result.transcript);
+        setLastResponse(result.message);
+
+        // Play TTS response if we got audio
+        if (result.audio.byteLength > 1000) {
+          const audioBlob = new Blob([result.audio], { type: 'audio/mpeg' });
+          const url = URL.createObjectURL(audioBlob);
+          const audioEl = new Audio(url);
+          audioRef.current = audioEl;
+
+          setCallState('speaking');
+
+          audioEl.onended = () => {
+            URL.revokeObjectURL(url);
+            setCallState('idle');
+          };
+
+          audioEl.onerror = () => {
+            URL.revokeObjectURL(url);
+            setCallState('idle');
+          };
+
+          await audioEl.play();
+        } else {
+          setCallState('idle');
+        }
+      } catch (e) {
+        console.error('[Voice] Error:', e);
+        setCallState('idle');
+      }
     } else {
-      start();
-      setCallState('listening');
+      // Start recording
+      try {
+        await startRecording();
+        setCallState('listening');
+      } catch (e) {
+        console.error('[Voice] Mic error:', e);
+        setCallState('idle');
+      }
     }
-  }, [listening, start, stop]);
+  }, [recording, startRecording, stopRecording]);
 
   const handleStartCall = useCallback(() => {
     setInCall(true);
@@ -93,8 +80,10 @@ export function CallScreen() {
     conversationIdRef.current = undefined;
   }, []);
 
-  const handleEndCall = useCallback(() => {
-    stop();
+  const handleEndCall = useCallback(async () => {
+    if (recording) {
+      await stopRecording(); // discard
+    }
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
@@ -104,7 +93,7 @@ export function CallScreen() {
     setLastTranscript('');
     setLastResponse('');
     conversationIdRef.current = undefined;
-  }, [stop]);
+  }, [recording, stopRecording]);
 
   const micDisabled = callState === 'processing' || callState === 'speaking';
 
@@ -127,7 +116,7 @@ export function CallScreen() {
   const statusText = (() => {
     switch (callState) {
       case 'listening':
-        return 'Listening...';
+        return 'Listening... tap mic when done';
       case 'processing':
         return 'Thinking...';
       case 'speaking':
@@ -149,7 +138,7 @@ export function CallScreen() {
           <p className="mt-1 text-sm text-zinc-500">Ready to speak, sir.</p>
           {!supported && (
             <p className="mt-2 text-xs text-red-400">
-              Speech recognition is not supported in this browser.
+              Audio recording is not supported in this browser.
             </p>
           )}
         </div>
@@ -205,11 +194,11 @@ export function CallScreen() {
           onClick={handleMicPress}
           disabled={micDisabled}
           className={`flex h-14 w-14 items-center justify-center rounded-full transition-colors ${
-            listening
-              ? 'bg-green-600 text-white'
+            recording
+              ? 'bg-green-600 text-white animate-pulse'
               : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
           } disabled:cursor-not-allowed disabled:opacity-50`}
-          aria-label={listening ? 'Stop listening' : 'Start listening'}
+          aria-label={recording ? 'Stop recording' : 'Start recording'}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"

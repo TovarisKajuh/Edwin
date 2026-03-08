@@ -105,6 +105,41 @@ export async function sendVoice(
   return { audio: new ArrayBuffer(0), message: data.message, conversationId: data.conversationId };
 }
 
+export async function sendVoiceAudio(
+  audioBlob: Blob,
+  conversationId?: number
+): Promise<{ audio: ArrayBuffer; message: string; transcript: string; conversationId: number }> {
+  const formData = new FormData();
+  formData.append('file', audioBlob, 'recording.webm');
+  if (conversationId) {
+    formData.append('conversationId', conversationId.toString());
+  }
+
+  const res = await fetch(`${API_URL}/api/voice/audio`, {
+    method: 'POST',
+    headers: { ...getAuthHeaders() },
+    body: formData,
+  });
+  if (res.status === 401) throw new AuthError();
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(err.error || `Voice audio error: ${res.status}`);
+  }
+
+  const transcript = decodeURIComponent(res.headers.get('X-Edwin-Transcript') || '');
+  const message = decodeURIComponent(res.headers.get('X-Edwin-Message') || '');
+  const convId = parseInt(res.headers.get('X-Edwin-Conversation-Id') || '0');
+
+  const contentType = res.headers.get('content-type') || '';
+  if (contentType.includes('audio/')) {
+    const audio = await res.arrayBuffer();
+    return { audio, message, transcript, conversationId: convId };
+  }
+
+  const data = await res.json();
+  return { audio: new ArrayBuffer(0), message: data.message, transcript: data.transcript, conversationId: data.conversationId };
+}
+
 export async function getDashboard(): Promise<DashboardData> {
   const res = await fetch(`${API_URL}/api/dashboard`, {
     headers: { ...getAuthHeaders() },
