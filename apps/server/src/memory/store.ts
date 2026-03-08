@@ -104,7 +104,6 @@ export class MemoryStore {
       SELECT * FROM observations
       WHERE category = ?
         AND observed_at >= datetime('now', ? || ' days')
-        AND (expires_at IS NULL OR expires_at > datetime('now'))
       ORDER BY observed_at DESC, id DESC
     `).all(category, -days) as ObservationRow[];
   }
@@ -160,22 +159,20 @@ export class MemoryStore {
 
   // ── Observation Queries ────────────────────────────────────────────
 
-  /** Get all active (unexpired) observations, most recent first */
+  /** Get all observations, most recent first. Nothing is ever deleted — old ones get compressed (Session 5). */
   getActiveObservations(limit: number = 50): ObservationRow[] {
     return this.db.raw().prepare(`
       SELECT * FROM observations
-      WHERE (expires_at IS NULL OR expires_at > datetime('now'))
       ORDER BY observed_at DESC, id DESC
       LIMIT ?
     `).all(limit) as ObservationRow[];
   }
 
-  /** Get active observations of a specific category, limited */
-  getActiveObservationsByCategory(category: string, limit: number = 20): ObservationRow[] {
+  /** Get observations of a specific category, most recent first */
+  getObservationsByCategory(category: string, limit: number = 20): ObservationRow[] {
     return this.db.raw().prepare(`
       SELECT * FROM observations
       WHERE category = ?
-        AND (expires_at IS NULL OR expires_at > datetime('now'))
       ORDER BY observed_at DESC, id DESC
       LIMIT ?
     `).all(category, limit) as ObservationRow[];
@@ -187,7 +184,6 @@ export class MemoryStore {
       SELECT 1 FROM observations
       WHERE category = ?
         AND content = ?
-        AND (expires_at IS NULL OR expires_at > datetime('now'))
       LIMIT 1
     `).get(category, content);
     return existing !== undefined;

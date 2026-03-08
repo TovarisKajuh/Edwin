@@ -14,14 +14,11 @@ interface ExtractionResult {
   extractions: Extraction[];
 }
 
-/** Days until expiry per observation category. null = never expires (persists until resolved). */
-const EXPIRY_DAYS: Record<ExtractionCategory, number | null> = {
-  fact: 90,
-  commitment: null,   // Persists until confirmed done or explicitly dropped
-  preference: 180,
-  emotional_state: 1,
-  follow_up: null,     // Persists until Edwin follows up and gets an answer
-};
+/**
+ * Nothing in Edwin's memory ever gets deleted.
+ * Old observations get compressed into summaries (Session 5),
+ * but the knowledge is always preserved.
+ */
 
 const EXTRACTION_SYSTEM_PROMPT = `You extract structured facts from conversations between Edwin (a personal life companion) and Jan (his user). Output JSON only, no other text.
 
@@ -86,17 +83,11 @@ export async function extractMemories(
         continue;
       }
 
-      const expiryDays = EXPIRY_DAYS[extraction.category];
-      const expiresAt = expiryDays !== null
-        ? new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000).toISOString()
-        : undefined;
-
       store.addObservation(
         extraction.category,
         extraction.content,
         extraction.confidence ?? 0.5,
         'observed',
-        expiresAt,
       );
       stored++;
     }

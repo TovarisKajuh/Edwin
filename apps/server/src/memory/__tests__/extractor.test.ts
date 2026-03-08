@@ -95,7 +95,7 @@ describe('Memory Extractor', () => {
     expect(followUps[0].content).toBe('Ask Jan how the client meeting went');
   });
 
-  it('should set correct expiry dates per category', async () => {
+  it('should store all categories without expiry — nothing is ever deleted', async () => {
     mockedCallClaude.mockResolvedValueOnce(JSON.stringify({
       extractions: [
         { category: 'fact', content: 'Jan weighs 82kg', confidence: 0.95 },
@@ -113,43 +113,16 @@ describe('Memory Extractor', () => {
 
     await extractMemories(store, messages);
 
-    // Verify observations exist with expiry dates
     const allObs = db.raw().prepare(
       'SELECT category, expires_at FROM observations ORDER BY id'
     ).all() as { category: string; expires_at: string | null }[];
 
     expect(allObs).toHaveLength(5);
 
-    // Fact: 90 days
-    const fact = allObs.find(o => o.category === 'fact')!;
-    expect(fact.expires_at).not.toBeNull();
-    const factExpiry = new Date(fact.expires_at!);
-    const now = new Date();
-    const factDays = Math.round((factExpiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    expect(factDays).toBeGreaterThanOrEqual(89);
-    expect(factDays).toBeLessThanOrEqual(91);
-
-    // Commitment: never expires (persists until resolved)
-    const commitment = allObs.find(o => o.category === 'commitment')!;
-    expect(commitment.expires_at).toBeNull();
-
-    // Preference: 180 days
-    const preference = allObs.find(o => o.category === 'preference')!;
-    const prefExpiry = new Date(preference.expires_at!);
-    const prefDays = Math.round((prefExpiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    expect(prefDays).toBeGreaterThanOrEqual(179);
-    expect(prefDays).toBeLessThanOrEqual(181);
-
-    // Emotional state: 1 day
-    const emotion = allObs.find(o => o.category === 'emotional_state')!;
-    const emotionExpiry = new Date(emotion.expires_at!);
-    const emotionDays = Math.round((emotionExpiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    expect(emotionDays).toBeGreaterThanOrEqual(0);
-    expect(emotionDays).toBeLessThanOrEqual(2);
-
-    // Follow-up: never expires (persists until resolved)
-    const followUp = allObs.find(o => o.category === 'follow_up')!;
-    expect(followUp.expires_at).toBeNull();
+    // Nothing ever expires — all expires_at should be null
+    for (const obs of allObs) {
+      expect(obs.expires_at).toBeNull();
+    }
   });
 
   it('should handle empty extractions gracefully', async () => {

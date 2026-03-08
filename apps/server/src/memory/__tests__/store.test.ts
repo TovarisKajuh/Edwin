@@ -63,24 +63,21 @@ describe('MemoryStore', () => {
 
   // ── Active Observations ─────────────────────────────────────────
 
-  it('should getActiveObservations excluding expired', () => {
-    store.addObservation('fact', 'Active fact', 0.9, 'observed', '2099-01-01T00:00:00Z');
-    store.addObservation('fact', 'Expired fact', 0.9, 'observed', '2000-01-01T00:00:00Z');
-    store.addObservation('fact', 'No expiry fact', 0.9, 'observed');
+  it('should getActiveObservations returning all observations', () => {
+    store.addObservation('fact', 'Fact one', 0.9, 'observed');
+    store.addObservation('fact', 'Fact two', 0.9, 'observed');
+    store.addObservation('commitment', 'Go to gym', 0.9, 'observed');
 
     const active = store.getActiveObservations();
-    expect(active).toHaveLength(2);
-    expect(active.map(o => o.content)).toContain('Active fact');
-    expect(active.map(o => o.content)).toContain('No expiry fact');
-    expect(active.map(o => o.content)).not.toContain('Expired fact');
+    expect(active).toHaveLength(3);
   });
 
-  it('should getActiveObservationsByCategory', () => {
-    store.addObservation('commitment', 'Go to gym', 0.9, 'observed', '2099-01-01T00:00:00Z');
-    store.addObservation('fact', 'Weighs 82kg', 0.9, 'observed', '2099-01-01T00:00:00Z');
-    store.addObservation('commitment', 'Call electrician', 0.9, 'observed', '2099-01-01T00:00:00Z');
+  it('should getObservationsByCategory', () => {
+    store.addObservation('commitment', 'Go to gym', 0.9, 'observed');
+    store.addObservation('fact', 'Weighs 82kg', 0.9, 'observed');
+    store.addObservation('commitment', 'Call electrician', 0.9, 'observed');
 
-    const commitments = store.getActiveObservationsByCategory('commitment');
+    const commitments = store.getObservationsByCategory('commitment');
     expect(commitments).toHaveLength(2);
     expect(commitments.map(o => o.content)).toContain('Go to gym');
     expect(commitments.map(o => o.content)).toContain('Call electrician');
@@ -89,17 +86,11 @@ describe('MemoryStore', () => {
   // ── Deduplication ───────────────────────────────────────────────
 
   it('should detect existing observations with hasRecentObservation', () => {
-    store.addObservation('fact', 'Jan weighs 82kg', 0.9, 'observed', '2099-01-01T00:00:00Z');
+    store.addObservation('fact', 'Jan weighs 82kg', 0.9, 'observed');
 
     expect(store.hasRecentObservation('fact', 'Jan weighs 82kg')).toBe(true);
     expect(store.hasRecentObservation('fact', 'Jan weighs 81kg')).toBe(false);
     expect(store.hasRecentObservation('commitment', 'Jan weighs 82kg')).toBe(false);
-  });
-
-  it('should not detect expired observations in hasRecentObservation', () => {
-    store.addObservation('fact', 'Expired fact', 0.9, 'observed', '2000-01-01T00:00:00Z');
-
-    expect(store.hasRecentObservation('fact', 'Expired fact')).toBe(false);
   });
 
   // ── Memory Snapshot ──────────────────────────────────────────────
@@ -118,11 +109,11 @@ describe('MemoryStore', () => {
   });
 
   it('should buildMemorySnapshot with prioritized observations', () => {
-    store.addObservation('commitment', 'Jan will go to the gym tomorrow', 0.9, 'observed', '2099-01-01T00:00:00Z');
-    store.addObservation('follow_up', 'Ask about the meeting', 0.8, 'observed', '2099-01-01T00:00:00Z');
-    store.addObservation('emotional_state', 'Jan seems stressed', 0.7, 'observed', '2099-01-01T00:00:00Z');
-    store.addObservation('fact', 'Jan has a supplier meeting Friday', 0.95, 'observed', '2099-01-01T00:00:00Z');
-    store.addObservation('preference', 'Jan prefers morning workouts', 0.85, 'observed', '2099-01-01T00:00:00Z');
+    store.addObservation('commitment', 'Jan will go to the gym tomorrow', 0.9, 'observed');
+    store.addObservation('follow_up', 'Ask about the meeting', 0.8, 'observed');
+    store.addObservation('emotional_state', 'Jan seems stressed', 0.7, 'observed');
+    store.addObservation('fact', 'Jan has a supplier meeting Friday', 0.95, 'observed');
+    store.addObservation('preference', 'Jan prefers morning workouts', 0.85, 'observed');
 
     const snapshot = store.buildMemorySnapshot();
 
@@ -138,14 +129,14 @@ describe('MemoryStore', () => {
     expect(snapshot).toContain('Jan prefers morning workouts');
   });
 
-  it('should exclude expired observations from memory snapshot', () => {
-    store.addObservation('fact', 'Current fact', 0.9, 'observed', '2099-01-01T00:00:00Z');
-    store.addObservation('fact', 'Expired fact', 0.9, 'observed', '2000-01-01T00:00:00Z');
+  it('should include all observations in memory snapshot — nothing is ever deleted', () => {
+    store.addObservation('fact', 'Old fact', 0.9, 'observed');
+    store.addObservation('fact', 'New fact', 0.9, 'observed');
 
     const snapshot = store.buildMemorySnapshot();
 
-    expect(snapshot).toContain('Current fact');
-    expect(snapshot).not.toContain('Expired fact');
+    expect(snapshot).toContain('Old fact');
+    expect(snapshot).toContain('New fact');
   });
 
   // ── Seed Profile ─────────────────────────────────────────────────
