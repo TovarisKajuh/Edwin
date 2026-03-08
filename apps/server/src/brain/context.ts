@@ -7,6 +7,7 @@ import { buildReasoningBrief, formatReasoningBrief } from './reasoning-context.j
 import { assessCapacity, formatEvaluationContext } from './thinking/evaluator.js';
 import { buildTemporalContext, formatTemporalContext } from './temporal-context.js';
 import { getCurrentLocation, formatLocationForContext } from '../integrations/location.js';
+import { getAutoApprovedCategories, formatStakesGuidance } from './concluding/stakes-engine.js';
 
 export interface BrainContext {
   timeOfDay: TimeOfDay;
@@ -19,6 +20,7 @@ export interface BrainContext {
   evaluationContext: string | null;
   temporalContext: string;
   locationContext: string;
+  stakesGuidance: string;
   conversationHistory: { role: string; content: string }[];
 }
 
@@ -73,6 +75,10 @@ export function buildContext(
   const location = getCurrentLocation(store);
   const locationContext = formatLocationForContext(location);
 
+  // Build stakes guidance (auto-approved categories from Jan's patterns)
+  const autoApproved = getAutoApprovedCategories(store);
+  const stakesGuidance = formatStakesGuidance(autoApproved);
+
   return {
     timeOfDay,
     dayType,
@@ -84,6 +90,7 @@ export function buildContext(
     evaluationContext,
     temporalContext,
     locationContext,
+    stakesGuidance,
     conversationHistory,
   };
 }

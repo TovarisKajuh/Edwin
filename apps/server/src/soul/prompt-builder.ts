@@ -17,6 +17,7 @@ export interface PromptContext {
   evaluationContext?: string | null;
   temporalContext?: string | null;
   locationContext?: string | null;
+  stakesGuidance?: string | null;
 }
 
 export function buildSystemPrompt(ctx: PromptContext): string {
@@ -75,7 +76,7 @@ export function buildSystemPrompt(ctx: PromptContext): string {
   // 7. Tool usage instructions
   sections.push([
     '[TOOLS]',
-    '- You have tools: remember, recall, schedule_reminder, list_pending, get_current_weather, get_schedule, create_event.',
+    '- You have tools: remember, recall, schedule_reminder, list_pending, get_current_weather, get_schedule, create_event, get_news.',
     '- Use them naturally. NEVER announce tool usage to Jan ("Let me check my memory" = wrong).',
     '- When Jan mentions something important — a fact, commitment, preference — use remember.',
     '- When Jan asks about something you should know, use recall to search your memory.',
@@ -105,6 +106,11 @@ export function buildSystemPrompt(ctx: PromptContext): string {
   // 9. Evaluation context (cost-benefit analysis for proposals)
   if (ctx.evaluationContext) {
     sections.push(ctx.evaluationContext);
+  }
+
+  // 9.5. Stakes guidance (action framework + auto-approved categories)
+  if (ctx.stakesGuidance) {
+    sections.push(ctx.stakesGuidance);
   }
 
   // 10. Soul directives (dynamic, memory-aware)
