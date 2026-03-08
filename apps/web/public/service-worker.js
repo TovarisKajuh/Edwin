@@ -30,11 +30,20 @@ self.addEventListener('push', (event) => {
     body: payload.body || '',
     icon: '/icon-192.png',
     badge: '/icon-192.png',
-    data: { url: payload.url || '/' },
+    data: {
+      url: payload.url || '/',
+      tag: payload.tag || null,
+    },
     vibrate: [200, 100, 200],
-    tag: 'edwin-notification',
+    tag: payload.tag || 'edwin-notification',
     renotify: true,
+    requireInteraction: payload.requireInteraction || false,
   };
+
+  // Add action buttons if provided
+  if (payload.actions && payload.actions.length > 0) {
+    options.actions = payload.actions;
+  }
 
   event.waitUntil(
     self.registration.showNotification(payload.title || 'Edwin', options)
@@ -42,9 +51,39 @@ self.addEventListener('push', (event) => {
 });
 
 self.addEventListener('notificationclick', (event) => {
+  const action = event.action;
+  const data = event.notification.data || {};
+
   event.notification.close();
 
-  const url = event.notification.data?.url || '/';
+  if (action === 'snooze') {
+    // Re-show notification in 10 minutes
+    event.waitUntil(
+      new Promise((resolve) => {
+        setTimeout(async () => {
+          await self.registration.showNotification(event.notification.title, {
+            body: event.notification.body,
+            icon: '/icon-192.png',
+            badge: '/icon-192.png',
+            data: data,
+            vibrate: [200, 100, 200],
+            tag: data.tag || 'edwin-notification',
+            renotify: true,
+            requireInteraction: true,
+            actions: [
+              { action: 'listen', title: 'Listen to Briefing' },
+              { action: 'snooze', title: 'Snooze 10min' },
+            ],
+          });
+          resolve();
+        }, 10 * 60 * 1000); // 10 minutes
+      })
+    );
+    return;
+  }
+
+  // Default: open/focus the app
+  const url = data.url || '/';
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {

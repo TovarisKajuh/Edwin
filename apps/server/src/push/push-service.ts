@@ -27,10 +27,18 @@ function ensureConfigured(): boolean {
   return true;
 }
 
+export interface PushAction {
+  action: string;
+  title: string;
+}
+
 export interface PushPayload {
   title: string;
   body: string;
   url?: string;
+  tag?: string;
+  actions?: PushAction[];
+  requireInteraction?: boolean;
 }
 
 /**

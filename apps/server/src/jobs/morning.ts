@@ -298,9 +298,15 @@ export async function runMorningBriefing(
 
   // Push to Jan's devices (fire-and-forget)
   sendPushToAll(store, {
-    title: 'Edwin — Morning Briefing',
+    title: 'Edwin — Good Morning, Sir',
     body: text.slice(0, 200),
-    url: '/',
+    url: '/briefing',
+    tag: 'morning-briefing',
+    actions: [
+      { action: 'listen', title: 'Listen to Briefing' },
+      { action: 'snooze', title: 'Snooze 10min' },
+    ],
+    requireInteraction: true,
   }).catch((err) => console.error('[Morning Briefing] Push failed:', err));
 
   const audio = await textToSpeech(text);

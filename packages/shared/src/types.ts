@@ -109,12 +109,15 @@ export interface PendingAction {
 }
 
 // Notifications
+export type NotificationType = 'briefing' | 'reminder' | 'alert' | 'nudge' | 'info';
+
 export interface Notification {
   id: number;
   message: string;
   timestamp: string;
   read: boolean;
   stakesLevel: StakesLevel;
+  type?: NotificationType;
 }
 
 export interface NotificationCountResponse {
