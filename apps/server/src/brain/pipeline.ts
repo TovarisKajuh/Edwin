@@ -42,6 +42,7 @@ export class BrainPipeline {
       recentContext: ctx.recentContext,
       memorySnapshot: ctx.memorySnapshot,
       healthWarnings: ctx.healthWarnings,
+      soulDirectives: ctx.soulDirectives,
     });
 
     // 5. Format conversation history for Claude
@@ -99,6 +100,7 @@ export class BrainPipeline {
       recentContext: ctx.recentContext,
       memorySnapshot: ctx.memorySnapshot,
       healthWarnings: ctx.healthWarnings,
+      soulDirectives: ctx.soulDirectives,
     });
 
     // 5. Format conversation history
@@ -136,6 +138,7 @@ export class BrainPipeline {
       recentContext: ctx.recentContext,
       memorySnapshot: ctx.memorySnapshot,
       healthWarnings: ctx.healthWarnings,
+      soulDirectives: ctx.soulDirectives,
     });
 
     // 3. Call Claude with briefing prompt

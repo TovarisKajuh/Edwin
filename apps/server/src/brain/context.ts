@@ -2,6 +2,7 @@ import type { TimeOfDay, DayType } from '@edwin/shared';
 import { getTimeOfDay, getDayType } from '../soul/personality.js';
 import { MemoryStore } from '../memory/store.js';
 import { checkHealth, formatHealthWarnings } from './self-awareness.js';
+import { computeSoulDirectives, formatSoulDirectives } from '../soul/soul-filter.js';
 
 export interface BrainContext {
   timeOfDay: TimeOfDay;
@@ -9,6 +10,7 @@ export interface BrainContext {
   memorySnapshot: string;
   recentContext: string;
   healthWarnings: string | null;
+  soulDirectives: string;
   conversationHistory: { role: string; content: string }[];
 }
 
@@ -43,12 +45,17 @@ export function buildContext(
   const warnings = checkHealth(store);
   const healthWarnings = formatHealthWarnings(warnings);
 
+  // Compute dynamic soul directives based on memory + context
+  const directives = computeSoulDirectives(store, timeOfDay, dayType);
+  const soulDirectives = formatSoulDirectives(directives);
+
   return {
     timeOfDay,
     dayType,
     memorySnapshot,
     recentContext,
     healthWarnings,
+    soulDirectives,
     conversationHistory,
   };
 }

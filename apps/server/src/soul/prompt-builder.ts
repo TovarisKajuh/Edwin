@@ -10,6 +10,7 @@ export interface PromptContext {
   recentContext: string;
   memorySnapshot: string;
   healthWarnings?: string | null;
+  soulDirectives?: string;
 }
 
 export function buildSystemPrompt(ctx: PromptContext): string {
@@ -64,7 +65,12 @@ export function buildSystemPrompt(ctx: PromptContext): string {
     ].join('\n'),
   ];
 
-  // 7. Memory snapshot (if provided)
+  // 7. Soul directives (dynamic, memory-aware)
+  if (ctx.soulDirectives) {
+    sections.push(ctx.soulDirectives);
+  }
+
+  // 8. Memory snapshot (if provided)
   if (ctx.memorySnapshot) {
     sections.push(
       ['[MEMORY]', ctx.memorySnapshot].join('\n')
