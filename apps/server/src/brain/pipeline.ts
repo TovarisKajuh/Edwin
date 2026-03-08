@@ -57,6 +57,7 @@ export class BrainPipeline {
       soulDirectives: ctx.soulDirectives,
       implicitIntent: intent ? formatIntent(intent) : null,
       contextSignal,
+      reasoningBrief: ctx.reasoningBrief,
     });
 
     // 5. Format conversation history for Claude
@@ -65,9 +66,9 @@ export class BrainPipeline {
       content: m.content,
     }));
 
-    // 6. Call Claude with tools
+    // 6. Call Claude with tools (2048 tokens for multi-step reasoning)
     const response = await callClaudeWithTools(
-      systemPrompt, messages, EDWIN_TOOLS, this.store,
+      systemPrompt, messages, EDWIN_TOOLS, this.store, { maxTokens: 2048 },
     );
 
     // 7. Store Edwin's response
@@ -127,6 +128,7 @@ export class BrainPipeline {
       soulDirectives: ctx.soulDirectives,
       implicitIntent: intent ? formatIntent(intent) : null,
       contextSignal,
+      reasoningBrief: ctx.reasoningBrief,
     });
 
     // 5. Format conversation history
@@ -135,9 +137,9 @@ export class BrainPipeline {
       content: m.content,
     }));
 
-    // 6. Stream Claude's response with tools
+    // 6. Stream Claude's response with tools (2048 tokens for multi-step reasoning)
     const response = await streamClaudeWithTools(
-      systemPrompt, messages, EDWIN_TOOLS, this.store, onChunk,
+      systemPrompt, messages, EDWIN_TOOLS, this.store, onChunk, { maxTokens: 2048 },
     );
 
     // 7. Store Edwin's response

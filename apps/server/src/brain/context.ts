@@ -3,6 +3,7 @@ import { getTimeOfDay, getDayType } from '../soul/personality.js';
 import { MemoryStore } from '../memory/store.js';
 import { checkHealth, formatHealthWarnings } from './self-awareness.js';
 import { computeSoulDirectives, formatSoulDirectives } from '../soul/soul-filter.js';
+import { buildReasoningBrief, formatReasoningBrief } from './reasoning-context.js';
 
 export interface BrainContext {
   timeOfDay: TimeOfDay;
@@ -11,6 +12,7 @@ export interface BrainContext {
   recentContext: string;
   healthWarnings: string | null;
   soulDirectives: string;
+  reasoningBrief: string;
   conversationHistory: { role: string; content: string }[];
 }
 
@@ -49,6 +51,10 @@ export function buildContext(
   const directives = computeSoulDirectives(store, timeOfDay, dayType);
   const soulDirectives = formatSoulDirectives(directives);
 
+  // Build reasoning brief — synthesized awareness for multi-step thinking
+  const brief = buildReasoningBrief(store, timeOfDay, dayType);
+  const reasoningBrief = formatReasoningBrief(brief);
+
   return {
     timeOfDay,
     dayType,
@@ -56,6 +62,7 @@ export function buildContext(
     recentContext,
     healthWarnings,
     soulDirectives,
+    reasoningBrief,
     conversationHistory,
   };
 }

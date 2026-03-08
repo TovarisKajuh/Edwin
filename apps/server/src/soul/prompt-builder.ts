@@ -13,6 +13,7 @@ export interface PromptContext {
   soulDirectives?: string;
   implicitIntent?: string | null;
   contextSignal?: string | null;
+  reasoningBrief?: string | null;
 }
 
 export function buildSystemPrompt(ctx: PromptContext): string {
@@ -80,7 +81,12 @@ export function buildSystemPrompt(ctx: PromptContext): string {
     '- You can use multiple tools in one response. Tools are silent — Jan only sees your final words.',
   ].join('\n'));
 
-  // 8. Soul directives (dynamic, memory-aware)
+  // 8. Reasoning brief (current awareness for multi-step thinking)
+  if (ctx.reasoningBrief) {
+    sections.push(ctx.reasoningBrief);
+  }
+
+  // 9. Soul directives (dynamic, memory-aware)
   if (ctx.soulDirectives) {
     sections.push(ctx.soulDirectives);
   }
