@@ -1,5 +1,6 @@
 import { callClaude } from '../brain/reasoning.js';
 import { MemoryStore } from './store.js';
+import { profileObservations } from './profiler.js';
 
 const VALID_CATEGORIES = ['fact', 'commitment', 'preference', 'emotional_state', 'follow_up'] as const;
 type ExtractionCategory = (typeof VALID_CATEGORIES)[number];
@@ -95,6 +96,8 @@ export async function extractMemories(
     // Store each valid extraction (with dedup and superseding)
     let stored = 0;
     let superseded = 0;
+    const newObservations: { category: string; content: string }[] = [];
+
     for (const extraction of result.extractions) {
       if (!isValidCategory(extraction.category)) {
         continue;
@@ -120,11 +123,19 @@ export async function extractMemories(
         extraction.confidence ?? 0.5,
         'observed',
       );
+      newObservations.push({ category: extraction.category, content: extraction.content });
       stored++;
     }
 
     if (stored > 0 || superseded > 0) {
       console.log(`[memory-extraction] Stored ${stored}, superseded ${superseded}`);
+    }
+
+    // Profile new observations for multi-dimensional insights (fire-and-forget)
+    if (newObservations.length > 0) {
+      profileObservations(store, newObservations).catch((err) => {
+        console.error('[memory-extraction] Profiling failed:', err);
+      });
     }
   } catch (err) {
     console.error('[memory-extraction] Failed:', err);
