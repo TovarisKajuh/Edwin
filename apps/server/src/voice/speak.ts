@@ -3,11 +3,14 @@ export async function textToSpeech(text: string): Promise<ArrayBuffer | null> {
   try {
     const apiKey = process.env.ELEVENLABS_API_KEY;
     const voiceId = process.env.ELEVENLABS_VOICE_ID;
+    console.log('[TTS] apiKey set:', !!apiKey, 'voiceId set:', !!voiceId);
     if (apiKey && voiceId) {
-      return await elevenLabsTTS(text, apiKey, voiceId);
+      const result = await elevenLabsTTS(text, apiKey, voiceId);
+      console.log('[TTS] ElevenLabs returned', result.byteLength, 'bytes');
+      return result;
     }
   } catch (err) {
-    console.warn('ElevenLabs TTS failed, falling back to browser TTS:', (err as Error).message);
+    console.error('[TTS] ElevenLabs failed:', (err as Error).message);
   }
 
   // Browser TTS: return null, frontend handles it with SpeechSynthesis API
