@@ -328,6 +328,15 @@ function capitalise(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+/**
+ * Check if a habit was completed today.
+ */
+export function isHabitDoneToday(store: MemoryStore, habit: HabitName, date?: string): boolean {
+  const today = date || todayStr();
+  const logs = getHabitLogs(store, habit, today, today);
+  return logs.some((l) => l.includes('completed'));
+}
+
 // ── Store Queries ────────────────────────────────────────────────
 
 function getHabitLogs(store: MemoryStore, habit: HabitName, from: string, to: string): string[] {

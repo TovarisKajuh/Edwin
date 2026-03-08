@@ -11,11 +11,11 @@ export function BillsPanel({ bills }: { bills: Bill[] }) {
 
   return (
     <ul className="space-y-2">
-      {bills.map((bill, i) => {
+      {bills.map((bill) => {
         const urgency = bill.dueIn <= 0 ? 'text-red-400' : bill.dueIn <= 3 ? 'text-amber-400' : 'text-zinc-400';
         const dueLabel = bill.dueIn <= 0 ? 'Overdue' : bill.dueIn === 1 ? 'Due tomorrow' : `Due in ${bill.dueIn} days`;
         return (
-          <li key={i} className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-800/50 px-3 py-2">
+          <li key={bill.name} className="flex items-center justify-between rounded-lg border border-zinc-800 bg-zinc-800/50 px-3 py-2">
             <div>
               <p className="text-sm text-zinc-300">{bill.name}</p>
               <p className={`text-xs ${urgency}`}>{dueLabel}</p>

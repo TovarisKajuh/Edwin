@@ -12,8 +12,8 @@ export function NewsTicker({ items }: { items: DashboardNewsItem[] }) {
 
   return (
     <ul className="space-y-2">
-      {items.map((item, i) => (
-        <li key={i} className="flex items-start gap-2">
+      {items.map((item) => (
+        <li key={item.link} className="flex items-start gap-2">
           <RelevanceDot score={item.relevance} />
           <div className="min-w-0 flex-1">
             <a href={item.link} target="_blank" rel="noopener noreferrer"

@@ -1,9 +1,10 @@
 import type { DashboardGoal } from '@edwin/shared';
 
 function ProgressRing({ percentage }: { percentage: number }) {
+  const clamped = Math.max(0, Math.min(100, percentage));
   const r = 20;
   const circumference = 2 * Math.PI * r;
-  const offset = circumference - (percentage / 100) * circumference;
+  const offset = circumference - (clamped / 100) * circumference;
 
   return (
     <svg width="52" height="52" className="shrink-0">
@@ -17,7 +18,7 @@ function ProgressRing({ percentage }: { percentage: number }) {
       />
       <text x="26" y="26" textAnchor="middle" dominantBaseline="central"
         className="fill-zinc-300 text-[10px] font-medium">
-        {percentage}%
+        {clamped}%
       </text>
     </svg>
   );

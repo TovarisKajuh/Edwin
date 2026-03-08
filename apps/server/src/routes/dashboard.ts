@@ -6,7 +6,7 @@ import { calculatePriorities } from '../brain/thinking/priority-engine.js';
 import { getWeather, formatWeatherForDashboard } from '../integrations/weather.js';
 import { getTodayEvents, formatEventsForDashboard } from '../integrations/calendar.js';
 import { getGoals, calculateProgress } from '../tracking/goals.js';
-import { getHabitStats, type HabitName } from '../tracking/habits.js';
+import { getHabitStats, isHabitDoneToday, type HabitName } from '../tracking/habits.js';
 import { getUpcomingBills } from '../tracking/finances.js';
 import { getNews, scoreRelevance } from '../integrations/news.js';
 import { getConversationCount } from '../memory/relationship.js';
@@ -66,7 +66,7 @@ export async function dashboardRoutes(server: FastifyInstance, store: MemoryStor
     const habits = TRACKED_HABITS.map((name) => {
       try {
         const stats = getHabitStats(store, name);
-        const doneToday = stats.thisWeek.values.some((v) => v.includes(todayStr));
+        const doneToday = isHabitDoneToday(store, name, todayStr);
         return {
           name,
           streak: stats.streak.current,
@@ -79,16 +79,21 @@ export async function dashboardRoutes(server: FastifyInstance, store: MemoryStor
       }
     });
 
-    // News (from cache, no extra fetch)
+    // News (from cache if available, with 2s timeout to never block dashboard)
     let recentNews: DashboardData['recentNews'] = [];
     try {
-      const feed = await getNews();
-      recentNews = feed.items.slice(0, 5).map((item) => ({
-        title: item.title,
-        source: item.source,
-        relevance: scoreRelevance(item),
-        link: item.link,
-      }));
+      const feed = await Promise.race([
+        getNews(),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
+      ]);
+      if (feed) {
+        recentNews = feed.items.slice(0, 5).map((item) => ({
+          title: item.title,
+          source: item.source,
+          relevance: scoreRelevance(item),
+          link: item.link,
+        }));
+      }
     } catch {
       // News is nice-to-have
     }
