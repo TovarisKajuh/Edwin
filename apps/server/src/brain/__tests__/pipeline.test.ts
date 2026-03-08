@@ -4,6 +4,8 @@ import { MemoryStore } from '../../memory/store';
 
 vi.mock('../reasoning', () => ({
   callClaude: vi.fn().mockResolvedValue('Good morning, sir. Let\'s make today count.'),
+  callClaudeWithTools: vi.fn().mockResolvedValue('Good morning, sir. Let\'s make today count.'),
+  streamClaudeWithTools: vi.fn().mockResolvedValue('Good morning, sir. Let\'s make today count.'),
 }));
 
 vi.mock('../../memory/extractor', () => ({

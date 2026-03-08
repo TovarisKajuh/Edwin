@@ -68,7 +68,19 @@ export function buildSystemPrompt(ctx: PromptContext): string {
     ].join('\n'),
   ];
 
-  // 7. Soul directives (dynamic, memory-aware)
+  // 7. Tool usage instructions
+  sections.push([
+    '[TOOLS]',
+    '- You have tools: remember, recall, schedule_reminder, list_pending.',
+    '- Use them naturally. NEVER announce tool usage to Jan ("Let me check my memory" = wrong).',
+    '- When Jan mentions something important — a fact, commitment, preference — use remember.',
+    '- When Jan asks about something you should know, use recall to search your memory.',
+    '- When Jan says "remind me" or you notice he needs a reminder, use schedule_reminder.',
+    '- Use list_pending when Jan asks about upcoming reminders or tasks.',
+    '- You can use multiple tools in one response. Tools are silent — Jan only sees your final words.',
+  ].join('\n'));
+
+  // 8. Soul directives (dynamic, memory-aware)
   if (ctx.soulDirectives) {
     sections.push(ctx.soulDirectives);
   }

@@ -554,6 +554,46 @@ export class MemoryStore {
    * Formatted as natural text, capped to stay concise.
    * Uses a single DB query for efficiency.
    */
+  // ── Scheduled Actions ──────────────────────────────────────────
+
+  addScheduledAction(
+    type: string,
+    description: string,
+    triggerTime: string,
+    stakesLevel: string = 'low',
+  ): number {
+    const result = this.db.raw().prepare(`
+      INSERT INTO scheduled_actions (type, description, trigger_time, stakes_level)
+      VALUES (?, ?, ?, ?)
+    `).run(type, description, triggerTime, stakesLevel);
+    return Number(result.lastInsertRowid);
+  }
+
+  getPendingActions(limit: number = 10): { id: number; type: string; description: string; trigger_time: string; stakes_level: string; created_at: string }[] {
+    return this.db.raw().prepare(`
+      SELECT id, type, description, trigger_time, stakes_level, created_at
+      FROM scheduled_actions
+      WHERE status = 'pending'
+      ORDER BY trigger_time ASC
+      LIMIT ?
+    `).all(limit) as { id: number; type: string; description: string; trigger_time: string; stakes_level: string; created_at: string }[];
+  }
+
+  getDueActions(now: string): { id: number; type: string; description: string; trigger_time: string; stakes_level: string }[] {
+    return this.db.raw().prepare(`
+      SELECT id, type, description, trigger_time, stakes_level
+      FROM scheduled_actions
+      WHERE status = 'pending' AND trigger_time <= ?
+      ORDER BY trigger_time ASC
+    `).all(now) as { id: number; type: string; description: string; trigger_time: string; stakes_level: string }[];
+  }
+
+  markActionDone(id: number): void {
+    this.db.raw().prepare(`
+      UPDATE scheduled_actions SET status = 'done', updated_at = CURRENT_TIMESTAMP WHERE id = ?
+    `).run(id);
+  }
+
   buildMemorySnapshot(): string {
     const identitySnapshot = this.buildIdentitySnapshot();
 

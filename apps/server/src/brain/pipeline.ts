@@ -3,10 +3,11 @@ import { MemoryStore } from '../memory/store.js';
 import { extractMemories } from '../memory/extractor.js';
 import { buildSystemPrompt } from '../soul/prompt-builder.js';
 import { buildContext } from './context.js';
-import { callClaude, streamClaude } from './reasoning.js';
+import { callClaude, callClaudeWithTools, streamClaudeWithTools } from './reasoning.js';
 import { detectAndStoreMood } from './understanding/mood-detector.js';
 import { detectIntent, formatIntent } from './understanding/intent-detector.js';
 import { interpretContext, formatContextInterpretation } from './understanding/context-interpreter.js';
+import { EDWIN_TOOLS } from './tools.js';
 
 export interface PipelineResponse {
   message: string;
@@ -64,8 +65,10 @@ export class BrainPipeline {
       content: m.content,
     }));
 
-    // 6. Call Claude
-    const response = await callClaude(systemPrompt, messages);
+    // 6. Call Claude with tools
+    const response = await callClaudeWithTools(
+      systemPrompt, messages, EDWIN_TOOLS, this.store,
+    );
 
     // 7. Store Edwin's response
     this.store.addMessage(conversationId, 'edwin', response);
@@ -85,7 +88,7 @@ export class BrainPipeline {
 
   /**
    * Process a message with streaming — calls onChunk for each text delta.
-   * Returns the full response + conversationId after stream completes.
+   * Tool calls happen silently; only the final text response is streamed.
    */
   async processStreaming(
     userMessage: string,
@@ -132,8 +135,10 @@ export class BrainPipeline {
       content: m.content,
     }));
 
-    // 6. Stream Claude's response
-    const response = await streamClaude(systemPrompt, messages, onChunk);
+    // 6. Stream Claude's response with tools
+    const response = await streamClaudeWithTools(
+      systemPrompt, messages, EDWIN_TOOLS, this.store, onChunk,
+    );
 
     // 7. Store Edwin's response
     this.store.addMessage(conversationId, 'edwin', response);
@@ -164,7 +169,7 @@ export class BrainPipeline {
       soulDirectives: ctx.soulDirectives,
     });
 
-    // 3. Call Claude with briefing prompt
+    // 3. Call Claude with briefing prompt (no tools needed for briefings)
     const briefingPrompt =
       'Generate a morning briefing for Jan. Include: a greeting using "sir", ' +
       'context about the day ahead, a motivating thought, and one key focus area. ' +
