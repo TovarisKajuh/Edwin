@@ -21,6 +21,7 @@ export interface PromptContext {
   habitSummary?: string | null;
   financialContext?: string | null;
   socialContext?: string | null;
+  inventoryContext?: string | null;
 }
 
 export function buildSystemPrompt(ctx: PromptContext): string {
@@ -79,7 +80,7 @@ export function buildSystemPrompt(ctx: PromptContext): string {
   // 7. Tool usage instructions
   sections.push([
     '[TOOLS]',
-    '- You have tools: remember, recall, schedule_reminder, list_reminders, cancel_reminder, list_pending, get_current_weather, get_schedule, create_event, get_news, log_habit, get_habit_stats, log_expense, get_spending, list_bills, add_person, log_contact, get_people.',
+    '- You have tools: remember, recall, schedule_reminder, list_reminders, cancel_reminder, list_pending, get_current_weather, get_schedule, create_event, get_news, log_habit, get_habit_stats, log_expense, get_spending, list_bills, add_person, log_contact, get_people, add_item, update_inventory, get_inventory.',
     '- Use them naturally. NEVER announce tool usage to Jan ("Let me check my memory" = wrong).',
     '- When Jan mentions something important — a fact, commitment, preference — use remember.',
     '- When Jan asks about something you should know, use recall to search your memory.',
@@ -94,6 +95,7 @@ export function buildSystemPrompt(ctx: PromptContext): string {
     '- Use list_bills when Jan asks about bills or payment due dates.',
     '- Use add_person when Jan mentions a new contact. Use log_contact when Jan mentions meeting/calling someone.',
     '- Use get_people when Jan asks "who haven\'t I seen?" or "who should I reach out to?".',
+    '- Use add_item to track consumables. Use update_inventory when Jan restocks. Use get_inventory to check stock.',
     '- Use get_current_weather when Jan asks about weather or when weather is relevant to plans.',
     '- Use get_schedule to check Jan\'s calendar before suggesting times or referencing his day.',
     '- Use create_event when Jan mentions a new meeting, appointment, or scheduled activity.',
@@ -138,6 +140,11 @@ export function buildSystemPrompt(ctx: PromptContext): string {
   // 9.8. Social awareness
   if (ctx.socialContext) {
     sections.push(ctx.socialContext);
+  }
+
+  // 9.9. Inventory alerts
+  if (ctx.inventoryContext) {
+    sections.push(ctx.inventoryContext);
   }
 
   // 10. Soul directives (dynamic, memory-aware)

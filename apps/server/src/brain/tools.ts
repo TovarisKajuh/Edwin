@@ -358,6 +358,58 @@ export const EDWIN_TOOLS: Tool[] = [
     },
   },
   {
+    name: 'add_item',
+    description:
+      'Add an item to inventory tracking. Use when Jan mentions a consumable he uses regularly — ' +
+      'supplements, household items, groceries.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        name: { type: 'string', description: 'Item name (e.g., "Creatine", "Toilet paper").' },
+        category: {
+          type: 'string',
+          enum: ['supplements', 'groceries', 'household', 'personal_care', 'office'],
+          description: 'Item category.',
+        },
+        quantity: { type: 'number', description: 'Current quantity.' },
+        reorder_threshold: { type: 'number', description: 'Quantity below which Edwin should suggest reordering.' },
+        reorder_link: { type: 'string', description: 'URL for reordering (optional).' },
+      },
+      required: ['name'],
+    },
+  },
+  {
+    name: 'update_inventory',
+    description:
+      'Update item quantity. Use when Jan restocks something or mentions consumption. ' +
+      'Finds item by name and updates quantity.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        name: { type: 'string', description: 'Item name to update (partial match works).' },
+        quantity: { type: 'number', description: 'New quantity.' },
+      },
+      required: ['name', 'quantity'],
+    },
+  },
+  {
+    name: 'get_inventory',
+    description:
+      'List tracked inventory items. Use when Jan asks "what supplements do I have?" or ' +
+      '"what am I running low on?".',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        category: {
+          type: 'string',
+          enum: ['supplements', 'groceries', 'household', 'personal_care', 'office'],
+          description: 'Filter by category (optional — omit to see all).',
+        },
+      },
+      required: [],
+    },
+  },
+  {
     name: 'get_news',
     description:
       'Get relevant industry news — solar, renewables, Austrian business, EU energy policy. ' +

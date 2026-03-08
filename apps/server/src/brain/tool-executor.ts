@@ -26,6 +26,10 @@ import {
   addPerson, findPerson, getAllPeople, getPeopleByContactGap,
   recordContact, formatPeopleForClaude, type RelationshipType,
 } from '../tracking/social.js';
+import {
+  addItem, findItem, getInventory, updateItemQuantity,
+  formatInventoryForClaude, type ItemCategory,
+} from '../tracking/inventory.js';
 import type { Source } from '@edwin/shared';
 
 export interface ToolResult {
@@ -96,6 +100,12 @@ async function executeSingleTool(store: MemoryStore, name: string, input: ToolIn
       return handleLogContact(store, input);
     case 'get_people':
       return handleGetPeople(store);
+    case 'add_item':
+      return handleAddItem(store, input);
+    case 'update_inventory':
+      return handleUpdateInventory(store, input);
+    case 'get_inventory':
+      return handleGetInventory(store, input);
     default:
       throw new Error(`Unknown tool: ${name}`);
   }
@@ -291,6 +301,30 @@ function handleLogContact(store: MemoryStore, input: ToolInput): string {
   }
   recordContact(store, person.id);
   return `Updated last contact with ${person.name} to today.`;
+}
+
+function handleAddItem(store: MemoryStore, input: ToolInput): string {
+  const name = input.name as string;
+  const category = input.category as ItemCategory | undefined;
+  const id = addItem(store, name, category, {
+    quantity: input.quantity as number | undefined,
+    reorderThreshold: input.reorder_threshold as number | undefined,
+    reorderLink: input.reorder_link as string | undefined,
+  });
+  return `Added "${name}" (ID ${id}) to inventory${category ? ` under ${category}` : ''}.`;
+}
+
+function handleUpdateInventory(store: MemoryStore, input: ToolInput): string {
+  const name = input.name as string;
+  const item = findItem(store, name);
+  if (!item) return `No item found matching "${name}". Use add_item to add it first.`;
+  return updateItemQuantity(store, item.id, input.quantity as number);
+}
+
+function handleGetInventory(store: MemoryStore, input: ToolInput): string {
+  const category = input.category as ItemCategory | undefined;
+  const items = getInventory(store, category);
+  return formatInventoryForClaude(items);
 }
 
 function handleGetPeople(store: MemoryStore): string {

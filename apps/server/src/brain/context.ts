@@ -11,6 +11,7 @@ import { getAutoApprovedCategories, formatStakesGuidance } from './concluding/st
 import { formatHabitSummary } from '../tracking/habits.js';
 import { formatFinancialContext } from '../tracking/finances.js';
 import { formatSocialContext } from '../tracking/social.js';
+import { formatInventoryContext } from '../tracking/inventory.js';
 
 export interface BrainContext {
   timeOfDay: TimeOfDay;
@@ -27,6 +28,7 @@ export interface BrainContext {
   habitSummary: string | null;
   financialContext: string | null;
   socialContext: string | null;
+  inventoryContext: string | null;
   conversationHistory: { role: string; content: string }[];
 }
 
@@ -94,6 +96,9 @@ export function buildContext(
   // Build social context
   const socialCtx = formatSocialContext(store);
 
+  // Build inventory context
+  const inventoryCtx = formatInventoryContext(store);
+
   return {
     timeOfDay,
     dayType,
@@ -109,6 +114,7 @@ export function buildContext(
     habitSummary,
     financialContext: financialCtx,
     socialContext: socialCtx,
+    inventoryContext: inventoryCtx,
     conversationHistory,
   };
 }
