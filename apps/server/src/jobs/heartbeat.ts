@@ -21,6 +21,7 @@ import { getEventsSoon } from '../integrations/calendar.js';
 import { instantiateRecurringReminders } from '../brain/concluding/reminders.js';
 import { checkDueBills } from '../tracking/finances.js';
 import { checkInventoryLevels } from '../tracking/inventory.js';
+import { getNews, scoreRelevance } from '../integrations/news.js';
 
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 
@@ -52,6 +53,9 @@ export async function runHeartbeat(store: MemoryStore): Promise<HeartbeatResult>
 
   // 1.8. Check inventory levels
   checkInventoryLevels(store);
+
+  // 1.9. Check for high-relevance news
+  await checkNewsAlerts(store);
 
   // 2. Context-aware outreach evaluation
   const outreachMessage = await evaluateOutreach(store);
@@ -134,6 +138,44 @@ export function checkUpcomingEvents(store: MemoryStore): number {
   }
 
   return notified;
+}
+
+// ── News Alerts ─────────────────────────────────────────────────
+
+// In-memory set of news links we've already alerted on (avoids duplicate pushes)
+const alertedNewsLinks = new Set<string>();
+
+/**
+ * Check for high-relevance news and push alerts.
+ * Only alerts on items scoring >= 0.7, max 3 per heartbeat tick.
+ * Tracks alerted links in memory to avoid re-alerting.
+ */
+export async function checkNewsAlerts(store: MemoryStore): Promise<number> {
+  try {
+    const feed = await getNews();
+    let alerted = 0;
+
+    for (const item of feed.items) {
+      if (alerted >= 3) break;
+      if (alertedNewsLinks.has(item.link)) continue;
+
+      const score = scoreRelevance(item);
+      if (score >= 0.7) {
+        alertedNewsLinks.add(item.link);
+        await sendPushToAll(store, {
+          title: `Edwin — ${item.source}`,
+          body: item.title,
+          url: item.link,
+        });
+        alerted++;
+      }
+    }
+
+    return alerted;
+  } catch {
+    // News fetch failure should never break the heartbeat
+    return 0;
+  }
 }
 
 /**

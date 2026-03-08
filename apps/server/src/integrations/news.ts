@@ -34,16 +34,16 @@ let cachedFeed: NewsFeed | null = null;
 // ── RSS Feeds ────────────────────────────────────────────────────
 
 const RSS_FEEDS = [
-  {
-    url: 'https://www.pv-magazine.com/feed/',
-    source: 'PV Magazine',
-    topic: 'solar',
-  },
-  {
-    url: 'https://renewablesnow.com/news/feed/',
-    source: 'Renewables Now',
-    topic: 'renewables',
-  },
+  // Solar / Energy (Jan's industry)
+  { url: 'https://www.pv-magazine.com/feed/', source: 'PV Magazine', topic: 'solar' },
+  { url: 'https://renewablesnow.com/news/feed/', source: 'Renewables Now', topic: 'renewables' },
+  { url: 'https://cleantechnica.com/feed/', source: 'CleanTechnica', topic: 'cleantech' },
+  // World / Business
+  { url: 'https://feeds.reuters.com/reuters/topNews', source: 'Reuters', topic: 'world' },
+  { url: 'https://feeds.reuters.com/reuters/businessNews', source: 'Reuters Business', topic: 'business' },
+  { url: 'https://feeds.bbci.co.uk/news/world/rss.xml', source: 'BBC World', topic: 'world' },
+  // EU / Regional
+  { url: 'https://www.euronews.com/rss', source: 'Euronews', topic: 'europe' },
 ];
 
 // ── RSS Parser (minimal, no dependencies) ────────────────────────
@@ -100,20 +100,37 @@ function cleanHtml(text: string): string {
     .trim();
 }
 
-// ── Relevance Filter ─────────────────────────────────────────────
+// ── Relevance Scoring ────────────────────────────────────────────
 
-const RELEVANCE_KEYWORDS = [
-  'solar', 'photovoltaic', 'pv', 'renewable', 'energy',
-  'austria', 'austrian', 'eu ', 'european',
-  'tariff', 'subsidy', 'incentive', 'regulation',
-  'installation', 'rooftop', 'panel', 'inverter',
-  'battery', 'storage', 'grid',
-  'electricity', 'power', 'clean energy',
+const KEYWORD_TIERS: { weight: number; words: string[] }[] = [
+  { weight: 1.0, words: ['solar', 'photovoltaic', 'pv', 'avesol', 'energy storage'] },
+  { weight: 0.8, words: ['renewable', 'battery', 'grid', 'inverter', 'esco', 'ppa'] },
+  { weight: 0.6, words: ['austria', 'austrian', 'slovenia', 'maribor', 'graz', 'eu energy'] },
+  { weight: 0.5, words: ['eu', 'european commission', 'subsidy', 'tariff', 'regulation'] },
+  { weight: 0.4, words: ['business', 'startup', 'investment', 'funding', 'acquisition'] },
+  { weight: 0.7, words: ['war', 'earthquake', 'crisis', 'emergency', 'attack', 'pandemic'] },
+  { weight: 0.3, words: ['technology', 'ai', 'climate', 'economy', 'finance', 'stock'] },
 ];
 
-function isRelevant(item: NewsItem): boolean {
+/**
+ * Score a news item's relevance to Jan (0.0 to 1.0).
+ * Higher = more relevant. Solar/PV = top tier. Celebrity gossip = 0.
+ */
+export function scoreRelevance(item: { title: string; summary: string | null }): number {
   const text = `${item.title} ${item.summary || ''}`.toLowerCase();
-  return RELEVANCE_KEYWORDS.some((kw) => text.includes(kw));
+  let maxScore = 0;
+  for (const tier of KEYWORD_TIERS) {
+    for (const word of tier.words) {
+      if (text.includes(word)) {
+        maxScore = Math.max(maxScore, tier.weight);
+      }
+    }
+  }
+  return maxScore;
+}
+
+function isRelevant(item: NewsItem): boolean {
+  return scoreRelevance(item) > 0;
 }
 
 // ── API ──────────────────────────────────────────────────────────

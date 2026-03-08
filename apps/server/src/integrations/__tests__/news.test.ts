@@ -4,6 +4,7 @@ import {
   formatNewsForClaude,
   formatNewsForBriefing,
   clearNewsCache,
+  scoreRelevance,
   type NewsItem,
   type NewsFeed,
 } from '../news';
@@ -103,6 +104,43 @@ describe('News Integration', () => {
     });
   });
 
+  // ── Relevance Scoring ────────────────────────────────────────
+
+  describe('scoreRelevance', () => {
+    it('should score solar industry news higher than general news', () => {
+      const solarItem = { title: 'New solar panel efficiency record', summary: 'Breakthrough in photovoltaic cells' };
+      const generalItem = { title: 'Local sports team wins', summary: 'Football results' };
+      expect(scoreRelevance(solarItem)).toBeGreaterThan(scoreRelevance(generalItem));
+    });
+
+    it('should score Austria/EU news with moderate relevance', () => {
+      const item = { title: 'EU announces new energy policy', summary: 'European Commission proposes renewable targets' };
+      expect(scoreRelevance(item)).toBeGreaterThan(0.3);
+    });
+
+    it('should score breaking world news as high relevance', () => {
+      const item = { title: 'Major earthquake strikes Turkey', summary: 'Magnitude 7.2 earthquake, casualties reported' };
+      expect(scoreRelevance(item)).toBeGreaterThan(0.5);
+    });
+
+    it('should return 0 for irrelevant celebrity gossip', () => {
+      const item = { title: 'Celebrity spotted at restaurant', summary: '' };
+      expect(scoreRelevance(item)).toBeLessThan(0.1);
+    });
+
+    it('should give highest score to direct solar/PV keywords', () => {
+      const item = { title: 'Photovoltaic installation boom in Austria', summary: 'PV installations doubled' };
+      expect(scoreRelevance(item)).toBe(1.0);
+    });
+
+    it('should score renewable energy news high but below solar', () => {
+      const item = { title: 'Battery storage costs decline', summary: 'Grid-scale battery prices fall 20%' };
+      const score = scoreRelevance(item);
+      expect(score).toBeGreaterThanOrEqual(0.8);
+      expect(score).toBeLessThanOrEqual(1.0);
+    });
+  });
+
   // ── Fetching ──────────────────────────────────────────────────
 
   describe('getNews', () => {
@@ -149,8 +187,8 @@ describe('News Integration', () => {
       await getNews();
       await getNews();
 
-      // Should only fetch once per feed URL (2 feeds), not 6
-      expect(fetchSpy.mock.calls.length).toBeLessThanOrEqual(2);
+      // Should only fetch once per feed URL (7 feeds), not 21
+      expect(fetchSpy.mock.calls.length).toBeLessThanOrEqual(7);
     });
 
     it('should handle feed failures gracefully', async () => {
@@ -158,6 +196,29 @@ describe('News Integration', () => {
 
       const feed = await getNews();
       expect(feed.items).toEqual([]);
+    });
+
+    it('should fetch from all 7 feeds', async () => {
+      const mockRSS = `<?xml version="1.0"?>
+<rss version="2.0">
+<channel>
+<item>
+<title>Solar panel news</title>
+<link>https://example.com/solar</link>
+<description>Solar energy update.</description>
+</item>
+</channel>
+</rss>`;
+
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+        ok: true,
+        text: async () => mockRSS,
+      } as Response);
+
+      await getNews();
+
+      // Should call fetch once per feed (7 feeds)
+      expect(fetchSpy.mock.calls.length).toBe(7);
     });
 
     it('should handle CDATA sections in RSS', async () => {
