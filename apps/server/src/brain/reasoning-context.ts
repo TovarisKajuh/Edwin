@@ -11,6 +11,7 @@
 import type { TimeOfDay, DayType } from '@edwin/shared';
 import { MemoryStore } from '../memory/store.js';
 import { generatePredictions, formatPredictions } from './understanding/predictor.js';
+import { getTopPriorities, formatPriorities } from './thinking/priority-engine.js';
 
 export interface ReasoningBrief {
   temporal: string;
@@ -20,6 +21,7 @@ export interface ReasoningBrief {
   activeCommitments: string[];
   knownPatterns: string[];
   predictions: string[];
+  priorities: string[];
 }
 
 /**
@@ -154,6 +156,10 @@ export function buildReasoningBrief(
   const rawPredictions = generatePredictions(store, timeOfDay, dayType);
   const predictions = formatPredictions(rawPredictions);
 
+  // ── Priority ranking ──────────────────────────────────────────
+  const topPriorities = getTopPriorities(store, timeOfDay, recentMood);
+  const priorities = formatPriorities(topPriorities);
+
   return {
     temporal,
     awareness,
@@ -162,6 +168,7 @@ export function buildReasoningBrief(
     activeCommitments,
     knownPatterns,
     predictions,
+    priorities,
   };
 }
 
@@ -203,6 +210,13 @@ export function formatReasoningBrief(brief: ReasoningBrief): string {
   if (brief.predictions.length > 0) {
     lines.push('Predictions (act on these if relevant):');
     for (const p of brief.predictions) {
+      lines.push(`  - ${p}`);
+    }
+  }
+
+  if (brief.priorities.length > 0) {
+    lines.push('Current priorities (most important first):');
+    for (const p of brief.priorities) {
       lines.push(`  - ${p}`);
     }
   }
