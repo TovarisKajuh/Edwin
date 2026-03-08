@@ -24,6 +24,7 @@ import { runMorningBriefing } from './morning.js';
 import { compressDaily, compressWeekly, promoteObservations } from '../memory/compressor.js';
 import { detectAndStorePatterns } from '../brain/understanding/pattern-detector.js';
 import { runHeartbeat, checkDueReminders } from './heartbeat.js';
+import { runEveningWindDown } from './evening.js';
 
 const TZ = 'Europe/Vienna';
 
@@ -67,13 +68,14 @@ export function startScheduler(store: MemoryStore): void {
     }
   }, { timezone: TZ });
 
-  // ── EVENING: 19:30 — Wind-down heartbeat (before lights out) ──
+  // ── EVENING: 19:30 — Wind-down (before lights out at 20:00) ──
   cron.schedule('30 19 * * *', async () => {
     console.log('[Edwin] Evening wind-down...');
     try {
-      await runHeartbeat(store);
+      await runEveningWindDown(store);
+      console.log('[Edwin] Evening wind-down delivered.');
     } catch (error) {
-      console.error('[Edwin] Evening heartbeat failed:', error);
+      console.error('[Edwin] Evening wind-down failed:', error);
     }
   }, { timezone: TZ });
 
