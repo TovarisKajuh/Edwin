@@ -1,4 +1,4 @@
-import { callClaude } from '../brain/reasoning.js';
+import { callClaudeFast } from '../brain/reasoning.js';
 import { MemoryStore } from './store.js';
 
 const VALID_CATEGORIES = ['fact', 'commitment', 'preference', 'emotional_state', 'follow_up'] as const;
@@ -17,10 +17,10 @@ interface ExtractionResult {
 /** Days until expiry per observation category */
 const EXPIRY_DAYS: Record<ExtractionCategory, number> = {
   fact: 90,
-  commitment: 3,
+  commitment: 14,
   preference: 180,
   emotional_state: 1,
-  follow_up: 7,
+  follow_up: 14,
 };
 
 const EXTRACTION_SYSTEM_PROMPT = `You extract structured facts from conversations between Edwin (a personal life companion) and Jan (his user). Output JSON only, no other text.
@@ -44,8 +44,8 @@ Output format:
 
 /**
  * Extract memories from a conversation and store them as observations.
- * Uses a fast Claude call (Haiku) to analyze recent messages.
- * Fire-and-forget — errors are caught and logged, never thrown.
+ * Uses Haiku (fast, cheap) for structured extraction.
+ * Fire-and-forget — errors are logged but never thrown.
  */
 export async function extractMemories(
   store: MemoryStore,
@@ -57,7 +57,7 @@ export async function extractMemories(
       .map((m) => `${m.role === 'jan' ? 'Jan' : 'Edwin'}: ${m.content}`)
       .join('\n');
 
-    const response = await callClaude(EXTRACTION_SYSTEM_PROMPT, [
+    const response = await callClaudeFast(EXTRACTION_SYSTEM_PROMPT, [
       { role: 'user', content: conversationText },
     ]);
 
@@ -66,7 +66,7 @@ export async function extractMemories(
     try {
       result = JSON.parse(response);
     } catch {
-      // Claude returned non-JSON — nothing to extract
+      console.error('[memory-extraction] Claude returned non-JSON:', response.slice(0, 200));
       return;
     }
 
@@ -74,9 +74,15 @@ export async function extractMemories(
       return;
     }
 
-    // Store each valid extraction as an observation
+    // Store each valid extraction as an observation (with dedup)
+    let stored = 0;
     for (const extraction of result.extractions) {
       if (!isValidCategory(extraction.category)) {
+        continue;
+      }
+
+      // Dedup: skip if a similar observation already exists in this category
+      if (store.hasRecentObservation(extraction.category, extraction.content)) {
         continue;
       }
 
@@ -90,9 +96,14 @@ export async function extractMemories(
         'observed',
         expiresAt,
       );
+      stored++;
     }
-  } catch {
-    // Fire-and-forget: never let extraction failure affect the main pipeline
+
+    if (stored > 0) {
+      console.log(`[memory-extraction] Stored ${stored} observations`);
+    }
+  } catch (err) {
+    console.error('[memory-extraction] Failed:', err);
   }
 }
 

@@ -60,8 +60,8 @@ export class BrainPipeline {
     extractMemories(
       this.store,
       recentMessages.map((m) => ({ role: m.role as 'jan' | 'edwin', content: m.content })),
-    ).catch(() => {
-      // Silently ignore extraction failures — never block the response
+    ).catch((err) => {
+      console.error('[pipeline] Memory extraction failed:', err);
     });
 
     // 9. Return result

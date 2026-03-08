@@ -170,14 +170,27 @@ export class MemoryStore {
     `).all(limit) as ObservationRow[];
   }
 
-  /** Get all observations of a specific category that haven't expired */
-  getActiveObservationsByCategory(category: string): ObservationRow[] {
+  /** Get active observations of a specific category, limited */
+  getActiveObservationsByCategory(category: string, limit: number = 20): ObservationRow[] {
     return this.db.raw().prepare(`
       SELECT * FROM observations
       WHERE category = ?
         AND (expires_at IS NULL OR expires_at > datetime('now'))
       ORDER BY observed_at DESC, id DESC
-    `).all(category) as ObservationRow[];
+      LIMIT ?
+    `).all(category, limit) as ObservationRow[];
+  }
+
+  /** Check if a similar observation already exists (deduplication) */
+  hasRecentObservation(category: string, content: string): boolean {
+    const existing = this.db.raw().prepare(`
+      SELECT 1 FROM observations
+      WHERE category = ?
+        AND content = ?
+        AND (expires_at IS NULL OR expires_at > datetime('now'))
+      LIMIT 1
+    `).get(category, content);
+    return existing !== undefined;
   }
 
   // ── Memory Snapshot ────────────────────────────────────────────────
@@ -210,20 +223,30 @@ export class MemoryStore {
    * Build a natural-language memory context for Claude's system prompt.
    * Prioritizes: commitments > follow-ups > emotional states > facts > preferences
    * Formatted as natural text, capped to stay concise.
+   * Uses a single DB query for efficiency.
    */
   buildMemorySnapshot(): string {
     const identitySnapshot = this.buildIdentitySnapshot();
 
-    // Retrieve active observations by priority category
-    const commitments = this.getActiveObservationsByCategory('commitment');
-    const followUps = this.getActiveObservationsByCategory('follow_up');
-    const emotions = this.getActiveObservationsByCategory('emotional_state');
-    const facts = this.getActiveObservationsByCategory('fact');
-    const preferences = this.getActiveObservationsByCategory('preference');
+    // Single query: get all active observations, group in code
+    const allActive = this.getActiveObservations(100);
+
+    const grouped: Record<string, ObservationRow[]> = {};
+    for (const obs of allActive) {
+      if (!grouped[obs.category]) {
+        grouped[obs.category] = [];
+      }
+      grouped[obs.category].push(obs);
+    }
+
+    const commitments = grouped['commitment'] ?? [];
+    const followUps = grouped['follow_up'] ?? [];
+    const emotions = grouped['emotional_state'] ?? [];
+    const facts = grouped['fact'] ?? [];
+    const preferences = grouped['preference'] ?? [];
 
     const memoryLines: string[] = [];
 
-    // Commitments — always include (these are active promises)
     if (commitments.length > 0) {
       memoryLines.push('Active commitments from Jan:');
       for (const c of commitments.slice(0, 5)) {
@@ -231,7 +254,6 @@ export class MemoryStore {
       }
     }
 
-    // Follow-ups — always include (Edwin needs to check back)
     if (followUps.length > 0) {
       memoryLines.push('Things to follow up on:');
       for (const f of followUps.slice(0, 5)) {
@@ -239,12 +261,10 @@ export class MemoryStore {
       }
     }
 
-    // Emotional state — most recent only
     if (emotions.length > 0) {
       memoryLines.push(`Jan's recent mood: ${emotions[0].content}`);
     }
 
-    // Facts — recent, limit to keep concise
     if (facts.length > 0) {
       memoryLines.push('Recent things Jan mentioned:');
       for (const f of facts.slice(0, 8)) {
@@ -252,7 +272,6 @@ export class MemoryStore {
       }
     }
 
-    // Preferences — limit to most recent
     if (preferences.length > 0) {
       memoryLines.push('Known preferences:');
       for (const p of preferences.slice(0, 5)) {
@@ -260,7 +279,6 @@ export class MemoryStore {
       }
     }
 
-    // Combine identity + living memory
     const sections = [identitySnapshot];
     if (memoryLines.length > 0) {
       sections.push('\n=== WHAT YOU REMEMBER ===\n' + memoryLines.join('\n'));

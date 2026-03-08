@@ -86,6 +86,22 @@ describe('MemoryStore', () => {
     expect(commitments.map(o => o.content)).toContain('Call electrician');
   });
 
+  // ── Deduplication ───────────────────────────────────────────────
+
+  it('should detect existing observations with hasRecentObservation', () => {
+    store.addObservation('fact', 'Jan weighs 82kg', 0.9, 'observed', '2099-01-01T00:00:00Z');
+
+    expect(store.hasRecentObservation('fact', 'Jan weighs 82kg')).toBe(true);
+    expect(store.hasRecentObservation('fact', 'Jan weighs 81kg')).toBe(false);
+    expect(store.hasRecentObservation('commitment', 'Jan weighs 82kg')).toBe(false);
+  });
+
+  it('should not detect expired observations in hasRecentObservation', () => {
+    store.addObservation('fact', 'Expired fact', 0.9, 'observed', '2000-01-01T00:00:00Z');
+
+    expect(store.hasRecentObservation('fact', 'Expired fact')).toBe(false);
+  });
+
   // ── Memory Snapshot ──────────────────────────────────────────────
 
   it('should buildMemorySnapshot with identity section', () => {

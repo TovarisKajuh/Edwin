@@ -4,13 +4,13 @@ import { MemoryStore } from '../store';
 
 // Mock the reasoning module to avoid real API calls
 vi.mock('../../brain/reasoning', () => ({
-  callClaude: vi.fn(),
+  callClaudeFast: vi.fn(),
 }));
 
-import { callClaude } from '../../brain/reasoning';
+import { callClaudeFast } from '../../brain/reasoning';
 import { extractMemories } from '../extractor';
 
-const mockedCallClaude = vi.mocked(callClaude);
+const mockedCallClaude = vi.mocked(callClaudeFast);
 
 describe('Memory Extractor', () => {
   let db: Database;
@@ -129,12 +129,12 @@ describe('Memory Extractor', () => {
     expect(factDays).toBeGreaterThanOrEqual(89);
     expect(factDays).toBeLessThanOrEqual(91);
 
-    // Commitment: 3 days
+    // Commitment: 14 days
     const commitment = allObs.find(o => o.category === 'commitment')!;
     const commitExpiry = new Date(commitment.expires_at!);
     const commitDays = Math.round((commitExpiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    expect(commitDays).toBeGreaterThanOrEqual(2);
-    expect(commitDays).toBeLessThanOrEqual(4);
+    expect(commitDays).toBeGreaterThanOrEqual(13);
+    expect(commitDays).toBeLessThanOrEqual(15);
 
     // Preference: 180 days
     const preference = allObs.find(o => o.category === 'preference')!;
@@ -150,12 +150,12 @@ describe('Memory Extractor', () => {
     expect(emotionDays).toBeGreaterThanOrEqual(0);
     expect(emotionDays).toBeLessThanOrEqual(2);
 
-    // Follow-up: 7 days
+    // Follow-up: 14 days
     const followUp = allObs.find(o => o.category === 'follow_up')!;
     const followExpiry = new Date(followUp.expires_at!);
     const followDays = Math.round((followExpiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    expect(followDays).toBeGreaterThanOrEqual(6);
-    expect(followDays).toBeLessThanOrEqual(8);
+    expect(followDays).toBeGreaterThanOrEqual(13);
+    expect(followDays).toBeLessThanOrEqual(15);
   });
 
   it('should handle empty extractions gracefully', async () => {
@@ -224,6 +224,34 @@ describe('Memory Extractor', () => {
     expect(allObs).toHaveLength(2); // Only the 2 valid ones
   });
 
+  it('should deduplicate — not store the same observation twice', async () => {
+    // First extraction
+    mockedCallClaude.mockResolvedValueOnce(JSON.stringify({
+      extractions: [
+        { category: 'fact', content: 'Jan weighs 82kg', confidence: 0.9 },
+      ],
+    }));
+
+    const messages = [
+      { role: 'jan' as const, content: 'I weigh 82kg' },
+      { role: 'edwin' as const, content: 'Noted, sir.' },
+    ];
+
+    await extractMemories(store, messages);
+
+    // Second extraction with same content
+    mockedCallClaude.mockResolvedValueOnce(JSON.stringify({
+      extractions: [
+        { category: 'fact', content: 'Jan weighs 82kg', confidence: 0.95 },
+      ],
+    }));
+
+    await extractMemories(store, messages);
+
+    const facts = store.getRecentObservations('fact', 1);
+    expect(facts).toHaveLength(1); // Only one, not two
+  });
+
   it('should pass conversation messages to Claude in the right format', async () => {
     mockedCallClaude.mockResolvedValueOnce(JSON.stringify({ extractions: [] }));
 
@@ -245,5 +273,8 @@ describe('Memory Extractor', () => {
     expect(claudeMessages[0].role).toBe('user');
     expect(claudeMessages[0].content).toContain('I weigh 82kg now.');
     expect(claudeMessages[0].content).toContain('And I have a meeting at 3pm.');
+
+    // Verify it uses the fast model (callClaudeFast), not callClaude
+    expect(mockedCallClaude).toHaveBeenCalledOnce();
   });
 });
