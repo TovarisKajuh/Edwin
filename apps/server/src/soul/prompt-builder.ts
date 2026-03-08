@@ -23,6 +23,7 @@ export interface PromptContext {
   socialContext?: string | null;
   inventoryContext?: string | null;
   goalContext?: string | null;
+  emotionalIntelligence?: string | null;
 }
 
 export function buildSystemPrompt(ctx: PromptContext): string {
@@ -151,6 +152,11 @@ export function buildSystemPrompt(ctx: PromptContext): string {
   // 9.10. Vision progress
   if (ctx.goalContext) {
     sections.push(ctx.goalContext);
+  }
+
+  // 9.11. Emotional intelligence directive
+  if (ctx.emotionalIntelligence) {
+    sections.push(ctx.emotionalIntelligence);
   }
 
   // 10. Soul directives (dynamic, memory-aware)

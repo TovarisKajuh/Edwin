@@ -9,6 +9,7 @@ import { detectIntent, formatIntent } from './understanding/intent-detector.js';
 import { interpretContext, formatContextInterpretation } from './understanding/context-interpreter.js';
 import { detectAndStoreLocation } from '../integrations/location.js';
 import { detectAndUpdateContacts } from '../tracking/social.js';
+import { assessEmotionalState, formatEmotionalIntelligence } from './understanding/emotional-intelligence.js';
 import { EDWIN_TOOLS } from './tools.js';
 import { generateMorningBriefing } from '../jobs/morning.js';
 
@@ -52,6 +53,10 @@ export class BrainPipeline {
     const contextInterp = interpretContext(userMessage, ctx.conversationHistory, this.store);
     const contextSignal = formatContextInterpretation(contextInterp);
 
+    // 3.7. Emotional intelligence assessment
+    const eiAssessment = assessEmotionalState(this.store, userMessage);
+    const eiDirective = formatEmotionalIntelligence(eiAssessment);
+
     // 4. Build system prompt (includes self-awareness warnings)
     const systemPrompt = buildSystemPrompt({
       timeOfDay: ctx.timeOfDay,
@@ -66,6 +71,13 @@ export class BrainPipeline {
       evaluationContext: ctx.evaluationContext,
       temporalContext: ctx.temporalContext,
       locationContext: ctx.locationContext,
+      stakesGuidance: ctx.stakesGuidance,
+      habitSummary: ctx.habitSummary,
+      financialContext: ctx.financialContext,
+      socialContext: ctx.socialContext,
+      inventoryContext: ctx.inventoryContext,
+      goalContext: ctx.goalContext,
+      emotionalIntelligence: eiDirective,
     });
 
     // 5. Format conversation history for Claude
