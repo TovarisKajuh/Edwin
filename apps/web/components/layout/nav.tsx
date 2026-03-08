@@ -17,6 +17,7 @@ const navItems: NavItem[] = [
   { href: '/', label: 'Dashboard', icon: '\u25C9' },
   { href: '/chat', label: 'Chat', icon: '\u25C6' },
   { href: '/voice', label: 'Voice', icon: '\u25CF' },
+  { href: '/news', label: 'News', icon: '\u25A0' },
 ];
 
 export function BottomNav() {
@@ -41,7 +42,7 @@ export function BottomNav() {
 
   return (
     <>
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-zinc-800 bg-zinc-950 md:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-zinc-800 bg-zinc-950 pb-[env(safe-area-inset-bottom)] md:hidden">
         <div className="flex items-center justify-around py-2">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
@@ -49,12 +50,13 @@ export function BottomNav() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-col items-center gap-1 px-4 py-1 text-xs transition-colors ${
+                className={`flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-1 px-3 py-1 text-xs transition-all active:scale-95 ${
                   isActive ? 'text-amber-400' : 'text-zinc-500'
                 }`}
               >
                 <span className="text-lg">{item.icon}</span>
                 <span>{item.label}</span>
+                {isActive && <span className="mt-0.5 h-0.5 w-4 rounded-full bg-amber-400" />}
               </Link>
             );
           })}

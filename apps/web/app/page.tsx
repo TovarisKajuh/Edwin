@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import type { DashboardData } from '@edwin/shared';
 import { getDashboard } from '@/lib/api';
 import { WeatherCard } from '@/components/dashboard/weather-card';
@@ -11,16 +11,23 @@ import { ActionsPanel } from '@/components/dashboard/actions-panel';
 import { NewsTicker } from '@/components/dashboard/news-ticker';
 import { BillsPanel } from '@/components/dashboard/bills-panel';
 import { HabitsGrid } from '@/components/dashboard/habits-grid';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    getDashboard()
+  const loadData = useCallback(() => {
+    return getDashboard()
       .then(setData)
       .catch((err) => setError(err.message));
   }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  const { containerRef, refreshing, pullDistance } = usePullToRefresh({
+    onRefresh: loadData,
+  });
 
   if (error) {
     return (
@@ -46,7 +53,15 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl p-4 pt-6 md:p-8">
+    <div ref={containerRef} className="mx-auto max-w-6xl p-4 pt-6 md:p-8">
+      {/* Pull-to-refresh indicator (mobile only) */}
+      {(pullDistance > 0 || refreshing) && (
+        <div className="mb-4 flex justify-center md:hidden" style={{ height: pullDistance }}>
+          <div className={`flex items-center gap-2 text-sm text-amber-400 ${refreshing ? 'animate-pulse' : ''}`}>
+            {refreshing ? 'Refreshing...' : pullDistance >= 80 ? 'Release to refresh' : 'Pull to refresh'}
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header className="mb-6 flex items-start justify-between">
         <div>
