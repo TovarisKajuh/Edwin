@@ -4,13 +4,13 @@ import { MemoryStore } from '../store';
 
 // Mock the reasoning module to avoid real API calls
 vi.mock('../../brain/reasoning', () => ({
-  callClaudeFast: vi.fn(),
+  callClaude: vi.fn(),
 }));
 
-import { callClaudeFast } from '../../brain/reasoning';
+import { callClaude } from '../../brain/reasoning';
 import { extractMemories } from '../extractor';
 
-const mockedCallClaude = vi.mocked(callClaudeFast);
+const mockedCallClaude = vi.mocked(callClaude);
 
 describe('Memory Extractor', () => {
   let db: Database;
@@ -129,12 +129,9 @@ describe('Memory Extractor', () => {
     expect(factDays).toBeGreaterThanOrEqual(89);
     expect(factDays).toBeLessThanOrEqual(91);
 
-    // Commitment: 14 days
+    // Commitment: never expires (persists until resolved)
     const commitment = allObs.find(o => o.category === 'commitment')!;
-    const commitExpiry = new Date(commitment.expires_at!);
-    const commitDays = Math.round((commitExpiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    expect(commitDays).toBeGreaterThanOrEqual(13);
-    expect(commitDays).toBeLessThanOrEqual(15);
+    expect(commitment.expires_at).toBeNull();
 
     // Preference: 180 days
     const preference = allObs.find(o => o.category === 'preference')!;
@@ -150,12 +147,9 @@ describe('Memory Extractor', () => {
     expect(emotionDays).toBeGreaterThanOrEqual(0);
     expect(emotionDays).toBeLessThanOrEqual(2);
 
-    // Follow-up: 14 days
+    // Follow-up: never expires (persists until resolved)
     const followUp = allObs.find(o => o.category === 'follow_up')!;
-    const followExpiry = new Date(followUp.expires_at!);
-    const followDays = Math.round((followExpiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    expect(followDays).toBeGreaterThanOrEqual(13);
-    expect(followDays).toBeLessThanOrEqual(15);
+    expect(followUp.expires_at).toBeNull();
   });
 
   it('should handle empty extractions gracefully', async () => {
@@ -273,8 +267,5 @@ describe('Memory Extractor', () => {
     expect(claudeMessages[0].role).toBe('user');
     expect(claudeMessages[0].content).toContain('I weigh 82kg now.');
     expect(claudeMessages[0].content).toContain('And I have a meeting at 3pm.');
-
-    // Verify it uses the fast model (callClaudeFast), not callClaude
-    expect(mockedCallClaude).toHaveBeenCalledOnce();
   });
 });

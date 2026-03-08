@@ -1,4 +1,4 @@
-import { callClaudeFast } from '../brain/reasoning.js';
+import { callClaude } from '../brain/reasoning.js';
 import { MemoryStore } from './store.js';
 
 const VALID_CATEGORIES = ['fact', 'commitment', 'preference', 'emotional_state', 'follow_up'] as const;
@@ -14,13 +14,13 @@ interface ExtractionResult {
   extractions: Extraction[];
 }
 
-/** Days until expiry per observation category */
-const EXPIRY_DAYS: Record<ExtractionCategory, number> = {
+/** Days until expiry per observation category. null = never expires (persists until resolved). */
+const EXPIRY_DAYS: Record<ExtractionCategory, number | null> = {
   fact: 90,
-  commitment: 14,
+  commitment: null,   // Persists until confirmed done or explicitly dropped
   preference: 180,
   emotional_state: 1,
-  follow_up: 14,
+  follow_up: null,     // Persists until Edwin follows up and gets an answer
 };
 
 const EXTRACTION_SYSTEM_PROMPT = `You extract structured facts from conversations between Edwin (a personal life companion) and Jan (his user). Output JSON only, no other text.
@@ -57,7 +57,7 @@ export async function extractMemories(
       .map((m) => `${m.role === 'jan' ? 'Jan' : 'Edwin'}: ${m.content}`)
       .join('\n');
 
-    const response = await callClaudeFast(EXTRACTION_SYSTEM_PROMPT, [
+    const response = await callClaude(EXTRACTION_SYSTEM_PROMPT, [
       { role: 'user', content: conversationText },
     ]);
 
@@ -87,7 +87,9 @@ export async function extractMemories(
       }
 
       const expiryDays = EXPIRY_DAYS[extraction.category];
-      const expiresAt = new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000).toISOString();
+      const expiresAt = expiryDays !== null
+        ? new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000).toISOString()
+        : undefined;
 
       store.addObservation(
         extraction.category,

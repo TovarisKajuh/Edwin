@@ -37,11 +37,11 @@ export async function callClaude(
   }
 }
 
-/** Fast, cheap Claude call for structured tasks (extraction, classification) */
-export async function callClaudeFast(
+/** Haiku call for voice responses only — faster for spoken conversation flow */
+export async function callClaudeVoice(
   systemPrompt: string,
   messages: { role: 'user' | 'assistant'; content: string }[],
-  maxTokens: number = 1024,
+  maxTokens: number = 512,
 ): Promise<string> {
   return callClaude(systemPrompt, messages, { model: FAST_MODEL, maxTokens });
 }
