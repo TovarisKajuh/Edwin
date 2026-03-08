@@ -1,5 +1,6 @@
 import type { Channel } from '@edwin/shared';
 import { MemoryStore } from '../memory/store.js';
+import { extractMemories } from '../memory/extractor.js';
 import { buildSystemPrompt } from '../soul/prompt-builder.js';
 import { buildContext } from './context.js';
 import { callClaude } from './reasoning.js';
@@ -54,7 +55,16 @@ export class BrainPipeline {
     // 7. Store Edwin's response
     this.store.addMessage(conversationId, 'edwin', response);
 
-    // 8. Return result
+    // 8. Extract memories in background (fire-and-forget)
+    const recentMessages = this.store.getMessages(conversationId).slice(-6);
+    extractMemories(
+      this.store,
+      recentMessages.map((m) => ({ role: m.role as 'jan' | 'edwin', content: m.content })),
+    ).catch(() => {
+      // Silently ignore extraction failures — never block the response
+    });
+
+    // 9. Return result
     return { message: response, conversationId };
   }
 
