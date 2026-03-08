@@ -1,10 +1,10 @@
-import Anthropic from '@anthropic-ai/sdk';
+import AnthropicSDK from '@anthropic-ai/sdk';
 
-let client: Anthropic | null = null;
+let client: InstanceType<typeof AnthropicSDK> | null = null;
 
-function getClient(): Anthropic {
+function getClient(): InstanceType<typeof AnthropicSDK> {
   if (!client) {
-    client = new Anthropic();
+    client = new AnthropicSDK();
   }
   return client;
 }
