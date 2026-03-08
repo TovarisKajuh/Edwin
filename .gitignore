@@ -7,3 +7,7 @@ dist/
 .turbo/
 .vercel
 .worktrees/
+financial-data/
+health-metrics.md
+complete-supplement-stack.md
+docs/plans/2026-03-08-deep-profile-data.md

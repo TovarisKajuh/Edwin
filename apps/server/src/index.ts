@@ -30,12 +30,10 @@ const db = new Database();
 const store = new MemoryStore(db);
 const pipeline = new BrainPipeline(store);
 
-// Seed Jan's profile if identity table is empty
-const existing = store.getAllIdentity();
-if (existing.length === 0) {
-  seedJanProfile(store);
-  server.log.info('Seeded Jan\'s profile into memory');
-}
+// Seed Jan's profile — identity uses ON CONFLICT so always safe to re-run.
+// Observations are guarded inside seedJanProfile to avoid duplicates.
+seedJanProfile(store);
+server.log.info('Jan\'s profile synced');
 
 // Register routes
 await chatRoutes(server, pipeline);
