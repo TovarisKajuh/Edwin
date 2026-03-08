@@ -18,6 +18,10 @@ import {
   cancelReminder,
 } from './concluding/reminders.js';
 import { logHabit, getHabitStats, formatHabitStats, type HabitName } from '../tracking/habits.js';
+import {
+  logExpense, getSpendingSummary, formatSpendingSummary,
+  getAllBills, formatBillsForClaude, type ExpenseCategory,
+} from '../tracking/finances.js';
 import type { Source } from '@edwin/shared';
 
 export interface ToolResult {
@@ -76,6 +80,12 @@ async function executeSingleTool(store: MemoryStore, name: string, input: ToolIn
       return handleLogHabit(store, input);
     case 'get_habit_stats':
       return handleGetHabitStats(store, input);
+    case 'log_expense':
+      return handleLogExpense(store, input);
+    case 'get_spending':
+      return handleGetSpending(store, input);
+    case 'list_bills':
+      return handleListBills(store);
     default:
       throw new Error(`Unknown tool: ${name}`);
   }
@@ -230,4 +240,24 @@ function handleLogHabit(store: MemoryStore, input: ToolInput): string {
 function handleGetHabitStats(store: MemoryStore, input: ToolInput): string {
   const stats = getHabitStats(store, input.habit as HabitName);
   return formatHabitStats(stats);
+}
+
+function handleLogExpense(store: MemoryStore, input: ToolInput): string {
+  return logExpense(store, {
+    amount: input.amount as number,
+    category: input.category as ExpenseCategory,
+    description: input.description as string,
+    date: new Date().toISOString().slice(0, 10),
+  });
+}
+
+function handleGetSpending(store: MemoryStore, input: ToolInput): string {
+  const period = (input.period as 'week' | 'month') || 'week';
+  const summary = getSpendingSummary(store, period);
+  return formatSpendingSummary(summary);
+}
+
+function handleListBills(store: MemoryStore): string {
+  const bills = getAllBills(store);
+  return formatBillsForClaude(bills);
 }

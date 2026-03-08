@@ -19,6 +19,7 @@ import { sendPushToAll } from '../push/push-service.js';
 import { scanForFollowUps, formatFollowUps } from './follow-up-engine.js';
 import { getEventsSoon } from '../integrations/calendar.js';
 import { instantiateRecurringReminders } from '../brain/concluding/reminders.js';
+import { checkDueBills } from '../tracking/finances.js';
 
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 
@@ -44,6 +45,9 @@ export async function runHeartbeat(store: MemoryStore): Promise<HeartbeatResult>
 
   // 1.6. Instantiate next recurring reminders if any are due
   instantiateRecurringReminders(store);
+
+  // 1.7. Check for bills due in next 3 days
+  checkDueBills(store, 3);
 
   // 2. Context-aware outreach evaluation
   const outreachMessage = await evaluateOutreach(store);

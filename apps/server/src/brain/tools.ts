@@ -256,6 +256,59 @@ export const EDWIN_TOOLS: Tool[] = [
     },
   },
   {
+    name: 'log_expense',
+    description:
+      'Log a spending event for Jan. Use when Jan mentions buying something, paying for a service, ' +
+      'or any financial transaction. Log silently — don\'t ask Jan to track spending.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        amount: {
+          type: 'number',
+          description: 'Amount in EUR.',
+        },
+        category: {
+          type: 'string',
+          enum: ['food', 'transport', 'shopping', 'entertainment', 'health', 'business', 'housing', 'subscriptions', 'other'],
+          description: 'Spending category.',
+        },
+        description: {
+          type: 'string',
+          description: 'What was bought (e.g., "Wolt delivery", "fuel", "gym membership").',
+        },
+      },
+      required: ['amount', 'category', 'description'],
+    },
+  },
+  {
+    name: 'get_spending',
+    description:
+      'Get spending summary for this week or month. Use when Jan asks "how much have I spent?" ' +
+      'or "what\'s my food spending this month?".',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        period: {
+          type: 'string',
+          enum: ['week', 'month'],
+          description: 'Time period for the summary.',
+        },
+      },
+      required: ['period'],
+    },
+  },
+  {
+    name: 'list_bills',
+    description:
+      'List all tracked bills with due dates and payment status. Use when Jan asks about bills ' +
+      'or when discussing financial planning.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {},
+      required: [],
+    },
+  },
+  {
     name: 'get_news',
     description:
       'Get relevant industry news — solar, renewables, Austrian business, EU energy policy. ' +

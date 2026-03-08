@@ -9,6 +9,7 @@ import { buildTemporalContext, formatTemporalContext } from './temporal-context.
 import { getCurrentLocation, formatLocationForContext } from '../integrations/location.js';
 import { getAutoApprovedCategories, formatStakesGuidance } from './concluding/stakes-engine.js';
 import { formatHabitSummary } from '../tracking/habits.js';
+import { formatFinancialContext } from '../tracking/finances.js';
 
 export interface BrainContext {
   timeOfDay: TimeOfDay;
@@ -23,6 +24,7 @@ export interface BrainContext {
   locationContext: string;
   stakesGuidance: string;
   habitSummary: string | null;
+  financialContext: string | null;
   conversationHistory: { role: string; content: string }[];
 }
 
@@ -84,6 +86,9 @@ export function buildContext(
   // Build habit tracking summary
   const habitSummary = formatHabitSummary(store);
 
+  // Build financial context
+  const financialCtx = formatFinancialContext(store);
+
   return {
     timeOfDay,
     dayType,
@@ -97,6 +102,7 @@ export function buildContext(
     locationContext,
     stakesGuidance,
     habitSummary,
+    financialContext: financialCtx,
     conversationHistory,
   };
 }
