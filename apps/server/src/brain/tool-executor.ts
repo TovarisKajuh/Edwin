@@ -17,6 +17,7 @@ import {
   createReminder, getActiveReminders, formatRemindersForClaude,
   cancelReminder,
 } from './concluding/reminders.js';
+import { logHabit, getHabitStats, formatHabitStats, type HabitName } from '../tracking/habits.js';
 import type { Source } from '@edwin/shared';
 
 export interface ToolResult {
@@ -71,6 +72,10 @@ async function executeSingleTool(store: MemoryStore, name: string, input: ToolIn
       return handleCreateEvent(store, input);
     case 'get_news':
       return handleGetNews();
+    case 'log_habit':
+      return handleLogHabit(store, input);
+    case 'get_habit_stats':
+      return handleGetHabitStats(store, input);
     default:
       throw new Error(`Unknown tool: ${name}`);
   }
@@ -210,4 +215,19 @@ function handleCreateEvent(store: MemoryStore, input: ToolInput): string {
 async function handleGetNews(): Promise<string> {
   const feed = await getNews();
   return formatNewsForClaude(feed);
+}
+
+function handleLogHabit(store: MemoryStore, input: ToolInput): string {
+  return logHabit(store, {
+    habit: input.habit as HabitName,
+    action: input.action as 'completed' | 'skipped' | 'value',
+    value: input.value as string | undefined,
+    date: new Date().toISOString().slice(0, 10),
+    notes: input.notes as string | undefined,
+  });
+}
+
+function handleGetHabitStats(store: MemoryStore, input: ToolInput): string {
+  const stats = getHabitStats(store, input.habit as HabitName);
+  return formatHabitStats(stats);
 }

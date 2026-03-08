@@ -208,6 +208,54 @@ export const EDWIN_TOOLS: Tool[] = [
     },
   },
   {
+    name: 'log_habit',
+    description:
+      'Log a habit event for Jan. Use when Jan mentions going to the gym, taking supplements, ' +
+      'sleeping well/badly, eating healthy, drinking water, reading, or meditating. ' +
+      'Edwin should log habits silently based on conversation — never ask Jan to "log" things.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        habit: {
+          type: 'string',
+          enum: ['gym', 'sleep', 'supplements', 'diet', 'hydration', 'reading', 'meditation'],
+          description: 'Which habit to log.',
+        },
+        action: {
+          type: 'string',
+          enum: ['completed', 'skipped', 'value'],
+          description: 'completed = did it, skipped = explicitly didn\'t, value = recording a measurement (e.g. sleep hours).',
+        },
+        value: {
+          type: 'string',
+          description: 'For value-type logs: the measurement (e.g., "7.5h" for sleep, "3L" for hydration).',
+        },
+        notes: {
+          type: 'string',
+          description: 'Optional notes (e.g., "creatine + magnesium", "leg day").',
+        },
+      },
+      required: ['habit', 'action'],
+    },
+  },
+  {
+    name: 'get_habit_stats',
+    description:
+      'Get habit tracking stats for a specific habit. Shows this week vs last week, streak, and trend. ' +
+      'Use when Jan asks "how\'s my gym consistency?" or "am I on track with supplements?".',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        habit: {
+          type: 'string',
+          enum: ['gym', 'sleep', 'supplements', 'diet', 'hydration', 'reading', 'meditation'],
+          description: 'Which habit to check stats for.',
+        },
+      },
+      required: ['habit'],
+    },
+  },
+  {
     name: 'get_news',
     description:
       'Get relevant industry news — solar, renewables, Austrian business, EU energy policy. ' +

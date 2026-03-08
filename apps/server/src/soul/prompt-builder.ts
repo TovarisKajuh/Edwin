@@ -18,6 +18,7 @@ export interface PromptContext {
   temporalContext?: string | null;
   locationContext?: string | null;
   stakesGuidance?: string | null;
+  habitSummary?: string | null;
 }
 
 export function buildSystemPrompt(ctx: PromptContext): string {
@@ -76,7 +77,7 @@ export function buildSystemPrompt(ctx: PromptContext): string {
   // 7. Tool usage instructions
   sections.push([
     '[TOOLS]',
-    '- You have tools: remember, recall, schedule_reminder, list_reminders, cancel_reminder, list_pending, get_current_weather, get_schedule, create_event, get_news.',
+    '- You have tools: remember, recall, schedule_reminder, list_reminders, cancel_reminder, list_pending, get_current_weather, get_schedule, create_event, get_news, log_habit, get_habit_stats.',
     '- Use them naturally. NEVER announce tool usage to Jan ("Let me check my memory" = wrong).',
     '- When Jan mentions something important — a fact, commitment, preference — use remember.',
     '- When Jan asks about something you should know, use recall to search your memory.',
@@ -84,6 +85,8 @@ export function buildSystemPrompt(ctx: PromptContext): string {
     '- Use list_reminders when Jan asks about his reminders specifically.',
     '- Use cancel_reminder when Jan says "cancel the X reminder" or "never mind about that reminder".',
     '- Use list_pending when Jan asks about upcoming reminders or tasks broadly.',
+    '- Use log_habit when Jan mentions going to the gym, taking supplements, sleeping, eating, drinking water, reading, or meditating. Log silently.',
+    '- Use get_habit_stats when Jan asks "how\'s my gym consistency?" or wants to see habit data. Reference the numbers naturally.',
     '- Use get_current_weather when Jan asks about weather or when weather is relevant to plans.',
     '- Use get_schedule to check Jan\'s calendar before suggesting times or referencing his day.',
     '- Use create_event when Jan mentions a new meeting, appointment, or scheduled activity.',
@@ -113,6 +116,11 @@ export function buildSystemPrompt(ctx: PromptContext): string {
   // 9.5. Stakes guidance (action framework + auto-approved categories)
   if (ctx.stakesGuidance) {
     sections.push(ctx.stakesGuidance);
+  }
+
+  // 9.6. Habit tracking summary
+  if (ctx.habitSummary) {
+    sections.push(ctx.habitSummary);
   }
 
   // 10. Soul directives (dynamic, memory-aware)

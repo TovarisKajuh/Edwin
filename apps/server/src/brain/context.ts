@@ -8,6 +8,7 @@ import { assessCapacity, formatEvaluationContext } from './thinking/evaluator.js
 import { buildTemporalContext, formatTemporalContext } from './temporal-context.js';
 import { getCurrentLocation, formatLocationForContext } from '../integrations/location.js';
 import { getAutoApprovedCategories, formatStakesGuidance } from './concluding/stakes-engine.js';
+import { formatHabitSummary } from '../tracking/habits.js';
 
 export interface BrainContext {
   timeOfDay: TimeOfDay;
@@ -21,6 +22,7 @@ export interface BrainContext {
   temporalContext: string;
   locationContext: string;
   stakesGuidance: string;
+  habitSummary: string | null;
   conversationHistory: { role: string; content: string }[];
 }
 
@@ -79,6 +81,9 @@ export function buildContext(
   const autoApproved = getAutoApprovedCategories(store);
   const stakesGuidance = formatStakesGuidance(autoApproved);
 
+  // Build habit tracking summary
+  const habitSummary = formatHabitSummary(store);
+
   return {
     timeOfDay,
     dayType,
@@ -91,6 +96,7 @@ export function buildContext(
     temporalContext,
     locationContext,
     stakesGuidance,
+    habitSummary,
     conversationHistory,
   };
 }
