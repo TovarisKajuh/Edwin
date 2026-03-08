@@ -8,6 +8,10 @@
 
 import { MemoryStore } from '../memory/store.js';
 import { getWeather, formatWeatherForClaude } from '../integrations/weather.js';
+import {
+  getTodayEvents, getWeekEvents, getUpcomingEvents,
+  createEvent, formatEventsForClaude,
+} from '../integrations/calendar.js';
 import type { Source } from '@edwin/shared';
 
 export interface ToolResult {
@@ -52,6 +56,10 @@ async function executeSingleTool(store: MemoryStore, name: string, input: ToolIn
       return handleListPending(store, input);
     case 'get_current_weather':
       return handleGetCurrentWeather();
+    case 'get_schedule':
+      return handleGetSchedule(store, input);
+    case 'create_event':
+      return handleCreateEvent(store, input);
     default:
       throw new Error(`Unknown tool: ${name}`);
   }
@@ -127,4 +135,43 @@ function handleListPending(store: MemoryStore, input: ToolInput): string {
 async function handleGetCurrentWeather(): Promise<string> {
   const report = await getWeather();
   return formatWeatherForClaude(report);
+}
+
+function handleGetSchedule(store: MemoryStore, input: ToolInput): string {
+  const range = (input.range as string) || 'today';
+
+  switch (range) {
+    case 'today': {
+      const events = getTodayEvents(store);
+      return formatEventsForClaude(events, 'Today\'s schedule');
+    }
+    case 'week': {
+      const events = getWeekEvents(store);
+      return formatEventsForClaude(events, 'This week\'s schedule');
+    }
+    case 'upcoming': {
+      const events = getUpcomingEvents(store, 10);
+      return formatEventsForClaude(events, 'Upcoming events');
+    }
+    default:
+      throw new Error(`Invalid schedule range: ${range}`);
+  }
+}
+
+function handleCreateEvent(store: MemoryStore, input: ToolInput): string {
+  const title = input.title as string;
+  const startTime = input.start_time as string;
+  const endTime = input.end_time as string | undefined;
+  const description = input.description as string | undefined;
+  const location = input.location as string | undefined;
+
+  // Validate start time
+  const parsed = new Date(startTime);
+  if (isNaN(parsed.getTime())) {
+    throw new Error(`Invalid start_time: ${startTime}`);
+  }
+
+  const event = createEvent(store, title, startTime, endTime, { description, location });
+  const timeStr = parsed.toLocaleString('en-GB', { timeZone: 'Europe/Vienna' });
+  return `Event created (ID ${event.id}): "${title}" at ${timeStr}`;
 }

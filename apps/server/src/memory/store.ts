@@ -39,6 +39,20 @@ interface MessageRow {
   timestamp: string;
 }
 
+export interface CalendarEventRow {
+  id: number;
+  title: string;
+  description: string | null;
+  start_time: string;
+  end_time: string | null;
+  location: string | null;
+  event_type: string;
+  recurring: string | null;
+  external_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface MemorySearchResult {
   tier: 'observation' | 'identity' | 'conversation' | 'weekly_summary';
   category: string;
@@ -719,5 +733,64 @@ export class MemoryStore {
     }
 
     return sections.join('\n');
+  }
+
+  // ── Calendar Events ──────────────────────────────────────────
+
+  /** Add a calendar event. Returns the event ID. */
+  addCalendarEvent(
+    title: string,
+    startTime: string,
+    endTime?: string,
+    options?: { description?: string; location?: string; eventType?: string; recurring?: string; externalId?: string },
+  ): number {
+    const result = this.db.raw().prepare(
+      `INSERT INTO calendar_events (title, description, start_time, end_time, location, event_type, recurring, external_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      title,
+      options?.description ?? null,
+      startTime,
+      endTime ?? null,
+      options?.location ?? null,
+      options?.eventType ?? 'event',
+      options?.recurring ?? null,
+      options?.externalId ?? null,
+    );
+    return result.lastInsertRowid as number;
+  }
+
+  /** Get events for a specific date (YYYY-MM-DD). */
+  getEventsForDate(date: string): CalendarEventRow[] {
+    return this.db.raw().prepare(
+      `SELECT * FROM calendar_events
+       WHERE start_time >= ? AND start_time < ?
+       ORDER BY start_time ASC`,
+    ).all(`${date}T00:00:00`, `${date}T23:59:59`) as CalendarEventRow[];
+  }
+
+  /** Get events in a date range. */
+  getEventsInRange(startDate: string, endDate: string): CalendarEventRow[] {
+    return this.db.raw().prepare(
+      `SELECT * FROM calendar_events
+       WHERE start_time >= ? AND start_time <= ?
+       ORDER BY start_time ASC`,
+    ).all(`${startDate}T00:00:00`, `${endDate}T23:59:59`) as CalendarEventRow[];
+  }
+
+  /** Get upcoming events from now. */
+  getUpcomingEvents(limit: number = 10): CalendarEventRow[] {
+    const now = new Date().toISOString();
+    return this.db.raw().prepare(
+      `SELECT * FROM calendar_events
+       WHERE start_time >= ?
+       ORDER BY start_time ASC
+       LIMIT ?`,
+    ).all(now, limit) as CalendarEventRow[];
+  }
+
+  /** Delete a calendar event by ID. */
+  deleteCalendarEvent(id: number): void {
+    this.db.raw().prepare('DELETE FROM calendar_events WHERE id = ?').run(id);
   }
 }

@@ -17,6 +17,7 @@ import { buildReasoningBrief, formatReasoningBrief } from '../brain/reasoning-co
 import { getTimeOfDay, getDayType } from '../soul/personality.js';
 import { sendPushToAll } from '../push/push-service.js';
 import { scanForFollowUps, formatFollowUps } from './follow-up-engine.js';
+import { getEventsSoon } from '../integrations/calendar.js';
 
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 
@@ -36,6 +37,9 @@ export async function runHeartbeat(store: MemoryStore): Promise<HeartbeatResult>
 
   // 1. Lightweight reminder scan
   const remindersTriggered = checkDueReminders(store);
+
+  // 1.5. Check for upcoming calendar events (30-min heads-up)
+  checkUpcomingEvents(store);
 
   // 2. Context-aware outreach evaluation
   const outreachMessage = await evaluateOutreach(store);
@@ -77,6 +81,47 @@ export function checkDueReminders(store: MemoryStore): number {
   }
 
   return triggered;
+}
+
+/**
+ * Check for calendar events happening soon and send push notifications.
+ */
+export function checkUpcomingEvents(store: MemoryStore): number {
+  const soonEvents = getEventsSoon(store, 35); // 35 min window to avoid missing events between ticks
+  let notified = 0;
+
+  for (const event of soonEvents) {
+    const eventTime = new Date(event.startTime);
+    const minutesUntil = Math.round((eventTime.getTime() - Date.now()) / 60000);
+    const timeStr = eventTime.toLocaleTimeString('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Europe/Vienna',
+    });
+
+    const message = minutesUntil <= 5
+      ? `"${event.title}" starting now (${timeStr}).`
+      : `"${event.title}" in ${minutesUntil} minutes (${timeStr}).`;
+
+    // Store as notification
+    store.addScheduledAction(
+      'notification',
+      message,
+      new Date().toISOString(),
+      'medium',
+    );
+
+    // Push notification
+    sendPushToAll(store, {
+      title: 'Edwin — Upcoming',
+      body: message,
+      url: '/',
+    }).catch((err) => console.error('[Heartbeat] Calendar push failed:', err));
+
+    notified++;
+  }
+
+  return notified;
 }
 
 /**

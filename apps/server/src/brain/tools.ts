@@ -106,4 +106,55 @@ export const EDWIN_TOOLS: Tool[] = [
       required: [],
     },
   },
+  {
+    name: 'get_schedule',
+    description:
+      'Get Jan\'s schedule — today\'s events, this week\'s events, or upcoming events. ' +
+      'Use when Jan asks about his schedule, when you need to check for conflicts before ' +
+      'suggesting times, or when referencing upcoming commitments.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        range: {
+          type: 'string',
+          enum: ['today', 'week', 'upcoming'],
+          description: 'Time range: today = today\'s events, week = this week, upcoming = next 10 events.',
+        },
+      },
+      required: ['range'],
+    },
+  },
+  {
+    name: 'create_event',
+    description:
+      'Add an event to Jan\'s calendar. Use when Jan mentions a meeting, appointment, or ' +
+      'scheduled activity. For medium/high stakes, PROPOSE the event first and wait for ' +
+      'confirmation before creating it.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        title: {
+          type: 'string',
+          description: 'Event title (e.g., "Client meeting", "Gym session").',
+        },
+        start_time: {
+          type: 'string',
+          description: 'ISO 8601 datetime for event start (e.g., "2026-03-09T10:00:00"). Use Europe/Vienna timezone.',
+        },
+        end_time: {
+          type: 'string',
+          description: 'ISO 8601 datetime for event end (optional).',
+        },
+        description: {
+          type: 'string',
+          description: 'Optional event description or notes.',
+        },
+        location: {
+          type: 'string',
+          description: 'Optional event location.',
+        },
+      },
+      required: ['title', 'start_time'],
+    },
+  },
 ];

@@ -15,6 +15,11 @@ vi.mock('../../integrations/weather', () => ({
   formatWeatherForClaude: vi.fn(),
 }));
 
+vi.mock('../../integrations/calendar', () => ({
+  getTodayEvents: vi.fn().mockReturnValue([]),
+  formatEventsForBriefing: vi.fn().mockReturnValue([]),
+}));
+
 vi.mock('../../push/push-service', () => ({
   sendPushToAll: vi.fn(() => Promise.resolve(0)),
 }));
@@ -23,6 +28,7 @@ import { buildBriefingContext, formatBriefingPrompt, generateMorningBriefing, ru
 import { callClaude } from '../../brain/reasoning';
 import { textToSpeech } from '../../voice/speak';
 import { getWeather, formatWeatherForClaude } from '../../integrations/weather';
+import { getTodayEvents, formatEventsForBriefing } from '../../integrations/calendar';
 
 let store: MemoryStore;
 
@@ -30,6 +36,8 @@ beforeEach(() => {
   vi.resetAllMocks();
   // Re-set default mock behavior after resetAllMocks
   vi.mocked(getWeather).mockRejectedValue(new Error('no weather in tests'));
+  vi.mocked(getTodayEvents).mockReturnValue([]);
+  vi.mocked(formatEventsForBriefing).mockReturnValue([]);
   const db = new Database(':memory:');
   store = new MemoryStore(db);
 });
@@ -51,6 +59,7 @@ describe('Morning Briefing', () => {
       expect(ctx.patterns).toEqual([]);
       expect(ctx.recentMood).toBeNull();
       expect(ctx.weather).toBeNull(); // weather API mocked to fail
+      expect(ctx.todayEvents).toEqual([]);
     });
 
     it('should pull pending commitments', async () => {
@@ -222,6 +231,7 @@ describe('Morning Briefing', () => {
         patterns: [],
         recentMood: null,
         weather: 'Graz, Austria — Partly cloudy, 14°C',
+        todayEvents: [],
       };
       const prompt = formatBriefingPrompt(ctx);
 

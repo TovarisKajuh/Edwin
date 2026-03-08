@@ -8,7 +8,16 @@ vi.mock('../../integrations/weather', () => ({
   formatWeatherForClaude: vi.fn(),
 }));
 
+vi.mock('../../integrations/calendar', () => ({
+  getTodayEvents: vi.fn().mockReturnValue([]),
+  getWeekEvents: vi.fn().mockReturnValue([]),
+  getUpcomingEvents: vi.fn().mockReturnValue([]),
+  createEvent: vi.fn(),
+  formatEventsForClaude: vi.fn(),
+}));
+
 import { getWeather, formatWeatherForClaude } from '../../integrations/weather';
+import { getTodayEvents, getWeekEvents, getUpcomingEvents, createEvent, formatEventsForClaude as formatCalendarForClaude } from '../../integrations/calendar';
 
 let store: MemoryStore;
 
@@ -248,6 +257,97 @@ describe('Tool Executor', () => {
 
       expect(results[0].is_error).toBe(true);
       expect(results[0].content).toContain('Weather API error');
+    });
+  });
+
+  // ── Schedule Tool ──────────────────────────────────────────────
+
+  describe('get_schedule', () => {
+    it('should return today schedule', async () => {
+      vi.mocked(getTodayEvents).mockReturnValue([
+        { id: 1, title: 'Standup', description: null, startTime: '2026-03-09T09:00:00', endTime: null, location: null, eventType: 'meeting' },
+      ]);
+      vi.mocked(formatCalendarForClaude).mockReturnValue('Today: Standup at 09:00');
+
+      const results = await executeTools(store, [{
+        id: 'tool_1',
+        name: 'get_schedule',
+        input: { range: 'today' },
+      }]);
+
+      expect(results[0].content).toBe('Today: Standup at 09:00');
+      expect(getTodayEvents).toHaveBeenCalledWith(store);
+    });
+
+    it('should return week schedule', async () => {
+      vi.mocked(getWeekEvents).mockReturnValue([]);
+      vi.mocked(formatCalendarForClaude).mockReturnValue('This week: No events.');
+
+      const results = await executeTools(store, [{
+        id: 'tool_1',
+        name: 'get_schedule',
+        input: { range: 'week' },
+      }]);
+
+      expect(results[0].content).toContain('No events');
+      expect(getWeekEvents).toHaveBeenCalledWith(store);
+    });
+
+    it('should return upcoming events', async () => {
+      vi.mocked(getUpcomingEvents).mockReturnValue([]);
+      vi.mocked(formatCalendarForClaude).mockReturnValue('Upcoming: No events.');
+
+      const results = await executeTools(store, [{
+        id: 'tool_1',
+        name: 'get_schedule',
+        input: { range: 'upcoming' },
+      }]);
+
+      expect(results[0].content).toContain('No events');
+      expect(getUpcomingEvents).toHaveBeenCalledWith(store, 10);
+    });
+  });
+
+  // ── Create Event Tool ─────────────────────────────────────────
+
+  describe('create_event', () => {
+    it('should create an event', async () => {
+      vi.mocked(createEvent).mockReturnValue({
+        id: 42,
+        title: 'Client lunch',
+        description: null,
+        startTime: '2026-03-09T12:00:00',
+        endTime: null,
+        location: null,
+        eventType: 'event',
+      });
+
+      const results = await executeTools(store, [{
+        id: 'tool_1',
+        name: 'create_event',
+        input: {
+          title: 'Client lunch',
+          start_time: '2026-03-09T12:00:00',
+        },
+      }]);
+
+      expect(results[0].content).toContain('Event created');
+      expect(results[0].content).toContain('Client lunch');
+      expect(createEvent).toHaveBeenCalled();
+    });
+
+    it('should reject invalid start times', async () => {
+      const results = await executeTools(store, [{
+        id: 'tool_1',
+        name: 'create_event',
+        input: {
+          title: 'Bad event',
+          start_time: 'not-a-date',
+        },
+      }]);
+
+      expect(results[0].is_error).toBe(true);
+      expect(results[0].content).toContain('Invalid start_time');
     });
   });
 

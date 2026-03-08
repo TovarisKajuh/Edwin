@@ -4,6 +4,7 @@ import type { DashboardData } from '@edwin/shared';
 import { getTimeOfDay } from '../soul/personality.js';
 import { calculatePriorities } from '../brain/thinking/priority-engine.js';
 import { getWeather, formatWeatherForDashboard } from '../integrations/weather.js';
+import { getTodayEvents, formatEventsForDashboard } from '../integrations/calendar.js';
 
 export async function dashboardRoutes(server: FastifyInstance, store: MemoryStore) {
   server.get('/api/dashboard', async () => {
@@ -50,7 +51,7 @@ export async function dashboardRoutes(server: FastifyInstance, store: MemoryStor
         day: 'numeric',
       }),
       weather,
-      schedule: [],
+      schedule: formatEventsForDashboard(getTodayEvents(store)),
       pendingActions,
     };
     return data;

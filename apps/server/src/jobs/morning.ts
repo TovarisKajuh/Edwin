@@ -22,6 +22,7 @@ import { getTopPriorities, formatPriorities } from '../brain/thinking/priority-e
 import { textToSpeech } from '../voice/speak.js';
 import { sendPushToAll } from '../push/push-service.js';
 import { getWeather, formatWeatherForClaude } from '../integrations/weather.js';
+import { getTodayEvents, formatEventsForBriefing } from '../integrations/calendar.js';
 
 export interface BriefingContext {
   dayName: string;
@@ -34,6 +35,7 @@ export interface BriefingContext {
   patterns: string[];
   recentMood: string | null;
   weather: string | null;
+  todayEvents: string[];
 }
 
 /**
@@ -104,6 +106,10 @@ export async function buildBriefingContext(store: MemoryStore): Promise<Briefing
     // Weather is nice-to-have, not critical
   }
 
+  // ── Today's Calendar Events ──────────────────────────────────────
+  const todayCalEvents = getTodayEvents(store);
+  const todayEvents = formatEventsForBriefing(todayCalEvents);
+
   return {
     dayName,
     dateStr,
@@ -115,6 +121,7 @@ export async function buildBriefingContext(store: MemoryStore): Promise<Briefing
     patterns,
     recentMood: moodText,
     weather,
+    todayEvents,
   };
 }
 
@@ -168,6 +175,15 @@ export function formatBriefingPrompt(ctx: BriefingContext): string {
     sections.push('RELEVANT PATTERNS:');
     for (const p of ctx.patterns) {
       sections.push(`  - ${p}`);
+    }
+  }
+
+  // Today's schedule
+  if (ctx.todayEvents.length > 0) {
+    sections.push('');
+    sections.push('TODAY\'S SCHEDULE:');
+    for (const e of ctx.todayEvents) {
+      sections.push(`  - ${e}`);
     }
   }
 
