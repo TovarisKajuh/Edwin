@@ -39,6 +39,14 @@ interface MessageRow {
   timestamp: string;
 }
 
+export interface MemorySearchResult {
+  tier: 'observation' | 'identity' | 'conversation' | 'weekly_summary';
+  category: string;
+  content: string;
+  relevance: number;
+  date: string | null;
+}
+
 export class MemoryStore {
   private db: Database;
 
@@ -104,7 +112,6 @@ export class MemoryStore {
       SELECT * FROM observations
       WHERE category = ?
         AND observed_at >= datetime('now', ? || ' days')
-        AND (expires_at IS NULL OR expires_at > datetime('now'))
       ORDER BY observed_at DESC, id DESC
     `).all(category, -days) as ObservationRow[];
   }
@@ -158,13 +165,370 @@ export class MemoryStore {
     `).get(channel) as ConversationRow | undefined;
   }
 
+  // ── Health / Diagnostics ───────────────────────────────────────────
+
+  /** Total number of observations in the database */
+  getObservationCount(): number {
+    const row = this.db.raw().prepare('SELECT COUNT(*) as count FROM observations').get() as { count: number };
+    return row.count;
+  }
+
+  /** Database file size in MB (0 for in-memory databases) */
+  getDatabaseSizeMB(): number {
+    try {
+      const row = this.db.raw().prepare(
+        "SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()"
+      ).get() as { size: number } | undefined;
+      return row ? row.size / (1024 * 1024) : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  // ── Observation Queries ────────────────────────────────────────────
+
+  /** Get all active observations (excludes superseded and compressed), most recent first. */
+  getActiveObservations(limit: number = 50): ObservationRow[] {
+    return this.db.raw().prepare(`
+      SELECT * FROM observations
+      WHERE source NOT IN ('superseded', 'compressed')
+      ORDER BY observed_at DESC, id DESC
+      LIMIT ?
+    `).all(limit) as ObservationRow[];
+  }
+
+  /** Get active observations of a specific category (excludes superseded and compressed), most recent first */
+  getObservationsByCategory(category: string, limit: number = 20): ObservationRow[] {
+    return this.db.raw().prepare(`
+      SELECT * FROM observations
+      WHERE category = ?
+        AND source NOT IN ('superseded', 'compressed')
+      ORDER BY observed_at DESC, id DESC
+      LIMIT ?
+    `).all(category, limit) as ObservationRow[];
+  }
+
+  /** Check if a similar observation already exists (deduplication) */
+  hasRecentObservation(category: string, content: string): boolean {
+    const existing = this.db.raw().prepare(`
+      SELECT 1 FROM observations
+      WHERE category = ?
+        AND content = ?
+      LIMIT 1
+    `).get(category, content);
+    return existing !== undefined;
+  }
+
+  /**
+   * Mark an observation as superseded by newer information.
+   * The old observation is NOT deleted — it's marked so it won't appear
+   * in active queries, but the knowledge history is preserved.
+   */
+  supersedeObservation(id: number, supersededBy: string): void {
+    this.db.raw().prepare(`
+      UPDATE observations
+      SET source = 'superseded',
+          confidence = 0,
+          expires_at = ?
+      WHERE id = ?
+    `).run(supersededBy, id);
+  }
+
+  /** Get an observation by ID */
+  getObservation(id: number): ObservationRow | undefined {
+    return this.db.raw().prepare(
+      'SELECT * FROM observations WHERE id = ?'
+    ).get(id) as ObservationRow | undefined;
+  }
+
+  // ── Conversation Management ────────────────────────────────────────
+
+  /** Update conversation with a summary */
+  setConversationSummary(id: number, summary: string): void {
+    this.db.raw().prepare(
+      'UPDATE conversations SET summary = ? WHERE id = ?'
+    ).run(summary, id);
+  }
+
+  // ── Date-Based Queries ────────────────────────────────────────────
+
+  /** Get active observations for a specific date (YYYY-MM-DD) */
+  getObservationsForDate(date: string): ObservationRow[] {
+    return this.db.raw().prepare(`
+      SELECT * FROM observations
+      WHERE DATE(observed_at) = ?
+        AND source NOT IN ('superseded', 'compressed')
+      ORDER BY observed_at ASC
+    `).all(date) as ObservationRow[];
+  }
+
+  /** Get observations within a date range, optionally filtered by category */
+  getObservationsByDateRange(
+    startDate: string,
+    endDate: string,
+    category?: string,
+  ): ObservationRow[] {
+    if (category) {
+      return this.db.raw().prepare(`
+        SELECT * FROM observations
+        WHERE DATE(observed_at) BETWEEN ? AND ?
+          AND category = ?
+          AND source NOT IN ('superseded', 'compressed')
+        ORDER BY observed_at ASC
+      `).all(startDate, endDate, category) as ObservationRow[];
+    }
+    return this.db.raw().prepare(`
+      SELECT * FROM observations
+      WHERE DATE(observed_at) BETWEEN ? AND ?
+        AND source NOT IN ('superseded', 'compressed')
+      ORDER BY observed_at ASC
+    `).all(startDate, endDate) as ObservationRow[];
+  }
+
+  // ── Compression ───────────────────────────────────────────────────
+
+  /** Mark observations as compressed (not deleted, just excluded from active queries) */
+  markObservationsCompressed(ids: number[]): void {
+    if (ids.length === 0) return;
+    const placeholders = ids.map(() => '?').join(',');
+    this.db.raw().prepare(`
+      UPDATE observations
+      SET source = 'compressed'
+      WHERE id IN (${placeholders})
+    `).run(...ids);
+  }
+
+  /** Get promotion candidates: categories with many observations that could become identity facts */
+  getPromotionCandidates(minCount: number): {
+    category: string;
+    key: string;
+    value: string;
+    confidence: number;
+    observationIds: number[];
+  }[] {
+    // Find categories with enough active observations
+    const groups = this.db.raw().prepare(`
+      SELECT category, COUNT(*) as cnt
+      FROM observations
+      WHERE source NOT IN ('superseded', 'compressed')
+        AND category NOT IN ('daily_summary', 'emotional_state')
+      GROUP BY category
+      HAVING cnt >= ?
+    `).all(minCount) as { category: string; cnt: number }[];
+
+    const candidates: {
+      category: string;
+      key: string;
+      value: string;
+      confidence: number;
+      observationIds: number[];
+    }[] = [];
+
+    for (const group of groups) {
+      // Get all observations in this category
+      const observations = this.db.raw().prepare(`
+        SELECT id, content, confidence FROM observations
+        WHERE category = ?
+          AND source NOT IN ('superseded', 'compressed')
+        ORDER BY confidence DESC, observed_at DESC
+      `).all(group.category) as { id: number; content: string; confidence: number }[];
+
+      if (observations.length < minCount) continue;
+
+      // Use the highest confidence observation as the promoted value
+      const best = observations[0];
+      candidates.push({
+        category: group.category === 'fact' ? 'learned_facts' : group.category,
+        key: `pattern_${group.category}`,
+        value: best.content,
+        confidence: best.confidence,
+        observationIds: observations.map((o) => o.id),
+      });
+    }
+
+    return candidates;
+  }
+
+  // ── Weekly Summaries ──────────────────────────────────────────────
+
+  /** Store a weekly summary */
+  addWeeklySummary(
+    weekStart: string,
+    highlights: string,
+    concerns: string,
+    patterns: string,
+    moodTrend: string,
+  ): void {
+    this.db.raw().prepare(`
+      INSERT INTO weekly_summaries (week_start, highlights, concerns, patterns, mood_trend)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(week_start) DO UPDATE SET
+        highlights = excluded.highlights,
+        concerns = excluded.concerns,
+        patterns = excluded.patterns,
+        mood_trend = excluded.mood_trend
+    `).run(weekStart, highlights, concerns, patterns, moodTrend);
+  }
+
+  /** Get a weekly summary */
+  getWeeklySummary(weekStart: string): {
+    week_start: string;
+    highlights: string;
+    concerns: string;
+    patterns: string;
+    mood_trend: string;
+  } | undefined {
+    return this.db.raw().prepare(
+      'SELECT * FROM weekly_summaries WHERE week_start = ?'
+    ).get(weekStart) as {
+      week_start: string;
+      highlights: string;
+      concerns: string;
+      patterns: string;
+      mood_trend: string;
+    } | undefined;
+  }
+
+  // ── Memory Search ─────────────────────────────────────────────────
+
+  /**
+   * Search across all memory tiers by keyword.
+   * Returns unified results ranked by relevance: exact match > partial match,
+   * with recency and confidence weighting.
+   */
+  searchMemory(query: string, limit: number = 10): MemorySearchResult[] {
+    const results: MemorySearchResult[] = [];
+    const lowerQuery = query.toLowerCase();
+    const queryPattern = `%${query}%`;
+
+    // 1. Search observations (active only)
+    const observations = this.db.raw().prepare(`
+      SELECT id, category, content, confidence, source, observed_at
+      FROM observations
+      WHERE content LIKE ?
+        AND source NOT IN ('superseded', 'compressed')
+      ORDER BY observed_at DESC
+      LIMIT ?
+    `).all(queryPattern, limit * 2) as ObservationRow[];
+
+    for (const obs of observations) {
+      const lowerContent = obs.content.toLowerCase();
+      let relevance = lowerContent.includes(lowerQuery) ? 5 : 1;
+
+      // Exact match bonus
+      if (lowerContent === lowerQuery) relevance = 10;
+
+      // Confidence weighting
+      relevance *= obs.confidence;
+
+      // Recency bonus (observations from last 7 days get a boost)
+      const ageMs = Date.now() - new Date(obs.observed_at).getTime();
+      const ageDays = ageMs / (1000 * 60 * 60 * 24);
+      if (ageDays < 1) relevance *= 2.0;
+      else if (ageDays < 7) relevance *= 1.5;
+      else if (ageDays < 30) relevance *= 1.2;
+
+      results.push({
+        tier: 'observation',
+        category: obs.category,
+        content: obs.content,
+        relevance,
+        date: obs.observed_at,
+      });
+    }
+
+    // 2. Search identity
+    const identityResults = this.db.raw().prepare(`
+      SELECT category, key, value, confidence
+      FROM identity
+      WHERE value LIKE ? OR key LIKE ?
+      LIMIT ?
+    `).all(queryPattern, queryPattern, limit) as IdentityRow[];
+
+    for (const row of identityResults) {
+      const lowerValue = row.value.toLowerCase();
+      let relevance = lowerValue.includes(lowerQuery) ? 6 : 3;
+      if (lowerValue === lowerQuery) relevance = 10;
+      relevance *= row.confidence;
+
+      // Identity is permanent knowledge — boost it
+      relevance *= 1.3;
+
+      results.push({
+        tier: 'identity',
+        category: row.category,
+        content: `${row.key}: ${row.value}`,
+        relevance,
+        date: row.updated_at,
+      });
+    }
+
+    // 3. Search conversation summaries
+    const conversations = this.db.raw().prepare(`
+      SELECT summary, started_at
+      FROM conversations
+      WHERE summary LIKE ?
+        AND summary IS NOT NULL
+      ORDER BY started_at DESC
+      LIMIT ?
+    `).all(queryPattern, limit) as { summary: string; started_at: string }[];
+
+    for (const conv of conversations) {
+      let relevance = conv.summary.toLowerCase().includes(lowerQuery) ? 4 : 1;
+      results.push({
+        tier: 'conversation',
+        category: 'summary',
+        content: conv.summary,
+        relevance,
+        date: conv.started_at,
+      });
+    }
+
+    // 4. Search weekly summaries
+    const weeklies = this.db.raw().prepare(`
+      SELECT week_start, highlights, concerns, patterns, mood_trend
+      FROM weekly_summaries
+      WHERE highlights LIKE ?
+        OR concerns LIKE ?
+        OR patterns LIKE ?
+      ORDER BY week_start DESC
+      LIMIT ?
+    `).all(queryPattern, queryPattern, queryPattern, limit) as {
+      week_start: string;
+      highlights: string;
+      concerns: string;
+      patterns: string;
+      mood_trend: string;
+    }[];
+
+    for (const weekly of weeklies) {
+      const combined = `${weekly.highlights} ${weekly.concerns} ${weekly.patterns}`;
+      let relevance = combined.toLowerCase().includes(lowerQuery) ? 3 : 1;
+      results.push({
+        tier: 'weekly_summary',
+        category: 'weekly',
+        content: `Week of ${weekly.week_start}: ${weekly.highlights}. Concerns: ${weekly.concerns}. Patterns: ${weekly.patterns}`,
+        relevance,
+        date: weekly.week_start,
+      });
+    }
+
+    // Sort by relevance (highest first), then by date (most recent first)
+    results.sort((a, b) => {
+      if (b.relevance !== a.relevance) return b.relevance - a.relevance;
+      return (b.date ?? '').localeCompare(a.date ?? '');
+    });
+
+    return results.slice(0, limit);
+  }
+
   // ── Memory Snapshot ────────────────────────────────────────────────
 
-  buildMemorySnapshot(): string {
+  /** Raw identity snapshot — structured data about Jan */
+  buildIdentitySnapshot(): string {
     const allIdentity = this.getAllIdentity();
     const lines: string[] = [];
 
-    // Group identity by category
     const grouped: Record<string, IdentityRow[]> = {};
     for (const row of allIdentity) {
       if (!grouped[row.category]) {
@@ -181,27 +545,74 @@ export class MemoryStore {
       }
     }
 
-    // Recent observations with confidence markers
-    const observationCategories = this.db.raw().prepare(`
-      SELECT DISTINCT category FROM observations
-      WHERE observed_at >= datetime('now', '-7 days')
-        AND (expires_at IS NULL OR expires_at > datetime('now'))
-    `).all() as { category: string }[];
+    return lines.join('\n');
+  }
 
-    if (observationCategories.length > 0) {
-      lines.push('\n=== RECENT OBSERVATIONS ===');
-      for (const { category } of observationCategories) {
-        const observations = this.getRecentObservations(category, 7);
-        if (observations.length > 0) {
-          lines.push(`\n[${category}]`);
-          for (const obs of observations) {
-            const marker = obs.confidence >= 0.7 ? '[confirmed]' : '[tentative]';
-            lines.push(`  ${marker} ${obs.content}`);
-          }
-        }
+  /**
+   * Build a natural-language memory context for Claude's system prompt.
+   * Prioritizes: commitments > follow-ups > emotional states > facts > preferences
+   * Formatted as natural text, capped to stay concise.
+   * Uses a single DB query for efficiency.
+   */
+  buildMemorySnapshot(): string {
+    const identitySnapshot = this.buildIdentitySnapshot();
+
+    // Single query: get all active observations, group in code
+    const allActive = this.getActiveObservations(100);
+
+    const grouped: Record<string, ObservationRow[]> = {};
+    for (const obs of allActive) {
+      if (!grouped[obs.category]) {
+        grouped[obs.category] = [];
+      }
+      grouped[obs.category].push(obs);
+    }
+
+    const commitments = grouped['commitment'] ?? [];
+    const followUps = grouped['follow_up'] ?? [];
+    const emotions = grouped['emotional_state'] ?? [];
+    const facts = grouped['fact'] ?? [];
+    const preferences = grouped['preference'] ?? [];
+
+    const memoryLines: string[] = [];
+
+    if (commitments.length > 0) {
+      memoryLines.push('Active commitments from Jan:');
+      for (const c of commitments.slice(0, 5)) {
+        memoryLines.push(`- ${c.content}`);
       }
     }
 
-    return lines.join('\n');
+    if (followUps.length > 0) {
+      memoryLines.push('Things to follow up on:');
+      for (const f of followUps.slice(0, 5)) {
+        memoryLines.push(`- ${f.content}`);
+      }
+    }
+
+    if (emotions.length > 0) {
+      memoryLines.push(`Jan's recent mood: ${emotions[0].content}`);
+    }
+
+    if (facts.length > 0) {
+      memoryLines.push('Recent things Jan mentioned:');
+      for (const f of facts.slice(0, 8)) {
+        memoryLines.push(`- ${f.content}`);
+      }
+    }
+
+    if (preferences.length > 0) {
+      memoryLines.push('Known preferences:');
+      for (const p of preferences.slice(0, 5)) {
+        memoryLines.push(`- ${p.content}`);
+      }
+    }
+
+    const sections = [identitySnapshot];
+    if (memoryLines.length > 0) {
+      sections.push('\n=== WHAT YOU REMEMBER ===\n' + memoryLines.join('\n'));
+    }
+
+    return sections.join('\n');
   }
 }

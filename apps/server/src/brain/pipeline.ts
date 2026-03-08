@@ -1,5 +1,6 @@
 import type { Channel } from '@edwin/shared';
 import { MemoryStore } from '../memory/store.js';
+import { extractMemories } from '../memory/extractor.js';
 import { buildSystemPrompt } from '../soul/prompt-builder.js';
 import { buildContext } from './context.js';
 import { callClaude } from './reasoning.js';
@@ -34,12 +35,13 @@ export class BrainPipeline {
     // 3. Build context
     const ctx = buildContext(this.store, conversationId);
 
-    // 4. Build system prompt
+    // 4. Build system prompt (includes self-awareness warnings)
     const systemPrompt = buildSystemPrompt({
       timeOfDay: ctx.timeOfDay,
       dayType: ctx.dayType,
       recentContext: ctx.recentContext,
       memorySnapshot: ctx.memorySnapshot,
+      healthWarnings: ctx.healthWarnings,
     });
 
     // 5. Format conversation history for Claude
@@ -54,7 +56,16 @@ export class BrainPipeline {
     // 7. Store Edwin's response
     this.store.addMessage(conversationId, 'edwin', response);
 
-    // 8. Return result
+    // 8. Extract memories in background (fire-and-forget)
+    const recentMessages = this.store.getMessages(conversationId).slice(-6);
+    extractMemories(
+      this.store,
+      recentMessages.map((m) => ({ role: m.role as 'jan' | 'edwin', content: m.content })),
+    ).catch((err) => {
+      console.error('[pipeline] Memory extraction failed:', err);
+    });
+
+    // 9. Return result
     return { message: response, conversationId };
   }
 
@@ -68,6 +79,7 @@ export class BrainPipeline {
       dayType: ctx.dayType,
       recentContext: ctx.recentContext,
       memorySnapshot: ctx.memorySnapshot,
+      healthWarnings: ctx.healthWarnings,
     });
 
     // 3. Call Claude with briefing prompt

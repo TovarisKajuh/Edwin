@@ -6,7 +6,12 @@ vi.mock('../reasoning', () => ({
   callClaude: vi.fn().mockResolvedValue('Good morning, sir. Let\'s make today count.'),
 }));
 
+vi.mock('../../memory/extractor', () => ({
+  extractMemories: vi.fn().mockResolvedValue(undefined),
+}));
+
 import { BrainPipeline } from '../pipeline';
+import { extractMemories } from '../../memory/extractor';
 
 describe('BrainPipeline', () => {
   let db: Database;
@@ -14,6 +19,7 @@ describe('BrainPipeline', () => {
   let pipeline: BrainPipeline;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     db = new Database(':memory:');
     store = new MemoryStore(db);
     pipeline = new BrainPipeline(store);
@@ -49,6 +55,19 @@ describe('BrainPipeline', () => {
 
     const messages = store.getMessages(result1.conversationId);
     expect(messages).toHaveLength(4); // 2 pairs of jan + edwin messages
+  });
+
+  it('process() triggers memory extraction after responding', async () => {
+    await pipeline.process('I have a meeting Friday', 'chat');
+
+    // Give the fire-and-forget promise a tick to resolve
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(extractMemories).toHaveBeenCalledOnce();
+    const [passedStore, passedMessages] = vi.mocked(extractMemories).mock.calls[0];
+    expect(passedStore).toBe(store);
+    expect(passedMessages.length).toBeGreaterThanOrEqual(2);
+    expect(passedMessages.some((m: { content: string }) => m.content.includes('meeting Friday'))).toBe(true);
   });
 
   it('generateBriefing() returns a string', async () => {

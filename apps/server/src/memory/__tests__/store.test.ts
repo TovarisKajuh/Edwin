@@ -61,13 +61,74 @@ describe('MemoryStore', () => {
     expect(recent[1].content).toBe('Jan seemed tired');
   });
 
+  // ── Active Observations ─────────────────────────────────────────
+
+  it('should getActiveObservations returning all observations', () => {
+    store.addObservation('fact', 'Fact one', 0.9, 'observed');
+    store.addObservation('fact', 'Fact two', 0.9, 'observed');
+    store.addObservation('commitment', 'Go to gym', 0.9, 'observed');
+
+    const active = store.getActiveObservations();
+    expect(active).toHaveLength(3);
+  });
+
+  it('should getObservationsByCategory', () => {
+    store.addObservation('commitment', 'Go to gym', 0.9, 'observed');
+    store.addObservation('fact', 'Weighs 82kg', 0.9, 'observed');
+    store.addObservation('commitment', 'Call electrician', 0.9, 'observed');
+
+    const commitments = store.getObservationsByCategory('commitment');
+    expect(commitments).toHaveLength(2);
+    expect(commitments.map(o => o.content)).toContain('Go to gym');
+    expect(commitments.map(o => o.content)).toContain('Call electrician');
+  });
+
+  // ── Superseding ────────────────────────────────────────────────
+
+  it('should supersede an observation without deleting it', () => {
+    store.addObservation('fact', 'Jan weighs 83kg', 0.9, 'observed');
+    const obs = store.getObservationsByCategory('fact')[0];
+
+    store.supersedeObservation(obs.id, 'Jan weighs 81kg');
+
+    // Superseded observation is no longer in active queries
+    const active = store.getObservationsByCategory('fact');
+    expect(active).toHaveLength(0);
+
+    // But it still exists in the database (not deleted)
+    const row = store.getObservation(obs.id);
+    expect(row).toBeDefined();
+    expect(row!.source).toBe('superseded');
+    expect(row!.confidence).toBe(0);
+  });
+
+  it('should exclude superseded observations from getActiveObservations', () => {
+    store.addObservation('fact', 'Old fact', 0.9, 'observed');
+    store.addObservation('fact', 'Current fact', 0.9, 'observed');
+    const oldObs = store.getObservationsByCategory('fact').find(o => o.content === 'Old fact')!;
+
+    store.supersedeObservation(oldObs.id, 'Current fact');
+
+    const active = store.getActiveObservations();
+    expect(active).toHaveLength(1);
+    expect(active[0].content).toBe('Current fact');
+  });
+
+  // ── Deduplication ───────────────────────────────────────────────
+
+  it('should detect existing observations with hasRecentObservation', () => {
+    store.addObservation('fact', 'Jan weighs 82kg', 0.9, 'observed');
+
+    expect(store.hasRecentObservation('fact', 'Jan weighs 82kg')).toBe(true);
+    expect(store.hasRecentObservation('fact', 'Jan weighs 81kg')).toBe(false);
+    expect(store.hasRecentObservation('commitment', 'Jan weighs 82kg')).toBe(false);
+  });
+
   // ── Memory Snapshot ──────────────────────────────────────────────
 
-  it('should buildMemorySnapshot including identity and observations', () => {
+  it('should buildMemorySnapshot with identity section', () => {
     store.setIdentity('personal', 'location', 'Austria', 'told');
     store.setIdentity('goals', 'car', 'Ferrari', 'told');
-    store.addObservation('mood', 'Feeling good', 0.9, 'observed');
-    store.addObservation('mood', 'Low energy', 0.4, 'observed');
 
     const snapshot = store.buildMemorySnapshot();
 
@@ -76,9 +137,37 @@ describe('MemoryStore', () => {
     expect(snapshot).toContain('car: Ferrari');
     expect(snapshot).toContain('[personal]');
     expect(snapshot).toContain('location: Austria');
-    expect(snapshot).toContain('=== RECENT OBSERVATIONS ===');
-    expect(snapshot).toContain('[confirmed] Feeling good');
-    expect(snapshot).toContain('[tentative] Low energy');
+  });
+
+  it('should buildMemorySnapshot with prioritized observations', () => {
+    store.addObservation('commitment', 'Jan will go to the gym tomorrow', 0.9, 'observed');
+    store.addObservation('follow_up', 'Ask about the meeting', 0.8, 'observed');
+    store.addObservation('emotional_state', 'Jan seems stressed', 0.7, 'observed');
+    store.addObservation('fact', 'Jan has a supplier meeting Friday', 0.95, 'observed');
+    store.addObservation('preference', 'Jan prefers morning workouts', 0.85, 'observed');
+
+    const snapshot = store.buildMemorySnapshot();
+
+    expect(snapshot).toContain('=== WHAT YOU REMEMBER ===');
+    expect(snapshot).toContain('Active commitments from Jan:');
+    expect(snapshot).toContain('Jan will go to the gym tomorrow');
+    expect(snapshot).toContain('Things to follow up on:');
+    expect(snapshot).toContain('Ask about the meeting');
+    expect(snapshot).toContain("Jan's recent mood: Jan seems stressed");
+    expect(snapshot).toContain('Recent things Jan mentioned:');
+    expect(snapshot).toContain('Jan has a supplier meeting Friday');
+    expect(snapshot).toContain('Known preferences:');
+    expect(snapshot).toContain('Jan prefers morning workouts');
+  });
+
+  it('should include all observations in memory snapshot — nothing is ever deleted', () => {
+    store.addObservation('fact', 'Old fact', 0.9, 'observed');
+    store.addObservation('fact', 'New fact', 0.9, 'observed');
+
+    const snapshot = store.buildMemorySnapshot();
+
+    expect(snapshot).toContain('Old fact');
+    expect(snapshot).toContain('New fact');
   });
 
   // ── Seed Profile ─────────────────────────────────────────────────

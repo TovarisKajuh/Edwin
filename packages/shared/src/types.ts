@@ -73,7 +73,7 @@ export interface PendingAction {
   status: 'pending' | 'proposed' | 'accepted' | 'declined' | 'done';
 }
 
-export type Source = 'told' | 'observed' | 'inferred';
+export type Source = 'told' | 'observed' | 'inferred' | 'superseded' | 'compressed';
 export type StakesLevel = 'low' | 'medium' | 'high';
 export type Channel = 'chat' | 'voice' | 'notification';
 export type TimeOfDay = 'early_morning' | 'morning' | 'afternoon' | 'evening' | 'night';
