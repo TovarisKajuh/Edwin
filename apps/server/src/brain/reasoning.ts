@@ -90,7 +90,7 @@ export async function callClaudeWithTools(
       }
 
       // Execute tools
-      const toolResults = executeTools(
+      const toolResults = await executeTools(
         store,
         toolUseBlocks.map((block) => ({
           id: block.id,
@@ -173,7 +173,7 @@ export async function streamClaudeWithTools(
       }
 
       // Execute tools
-      const toolResults = executeTools(
+      const toolResults = await executeTools(
         store,
         toolUseBlocks.map((block) => ({
           id: block.id,

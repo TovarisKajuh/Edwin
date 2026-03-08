@@ -10,14 +10,26 @@ vi.mock('../../voice/speak', () => ({
   textToSpeech: vi.fn().mockResolvedValue(null),
 }));
 
+vi.mock('../../integrations/weather', () => ({
+  getWeather: vi.fn().mockRejectedValue(new Error('no weather in tests')),
+  formatWeatherForClaude: vi.fn(),
+}));
+
+vi.mock('../../push/push-service', () => ({
+  sendPushToAll: vi.fn(() => Promise.resolve(0)),
+}));
+
 import { buildBriefingContext, formatBriefingPrompt, generateMorningBriefing, runMorningBriefing } from '../morning';
 import { callClaude } from '../../brain/reasoning';
 import { textToSpeech } from '../../voice/speak';
+import { getWeather, formatWeatherForClaude } from '../../integrations/weather';
 
 let store: MemoryStore;
 
 beforeEach(() => {
   vi.resetAllMocks();
+  // Re-set default mock behavior after resetAllMocks
+  vi.mocked(getWeather).mockRejectedValue(new Error('no weather in tests'));
   const db = new Database(':memory:');
   store = new MemoryStore(db);
 });
@@ -26,8 +38,8 @@ describe('Morning Briefing', () => {
   // ── Context Building ───────────────────────────────────────────
 
   describe('buildBriefingContext', () => {
-    it('should return basic day info with empty store', () => {
-      const ctx = buildBriefingContext(store);
+    it('should return basic day info with empty store', async () => {
+      const ctx = await buildBriefingContext(store);
 
       expect(ctx.dayName).toBeTruthy();
       expect(ctx.dateStr).toMatch(/^\d{4}-\d{2}-\d{2}$/);
@@ -38,49 +50,50 @@ describe('Morning Briefing', () => {
       expect(ctx.priorities).toEqual([]);
       expect(ctx.patterns).toEqual([]);
       expect(ctx.recentMood).toBeNull();
+      expect(ctx.weather).toBeNull(); // weather API mocked to fail
     });
 
-    it('should pull pending commitments', () => {
+    it('should pull pending commitments', async () => {
       store.addObservation('commitment', 'Call the supplier today', 1.0, 'told');
       store.addObservation('commitment', 'Go to the gym', 0.8, 'told');
 
-      const ctx = buildBriefingContext(store);
+      const ctx = await buildBriefingContext(store);
 
       expect(ctx.pendingCommitments).toHaveLength(2);
       expect(ctx.pendingCommitments[0]).toContain('gym'); // most recent first
       expect(ctx.pendingCommitments[1]).toContain('supplier');
     });
 
-    it('should pull follow-ups', () => {
+    it('should pull follow-ups', async () => {
       store.addObservation('follow_up', 'Ask about the client meeting result', 0.9, 'inferred');
 
-      const ctx = buildBriefingContext(store);
+      const ctx = await buildBriefingContext(store);
 
       expect(ctx.followUps).toHaveLength(1);
       expect(ctx.followUps[0]).toContain('client meeting');
     });
 
-    it('should pull recent mood', () => {
+    it('should pull recent mood', async () => {
       store.addObservation('emotional_state', 'Jan is stressed about the deadline', 0.8, 'observed');
 
-      const ctx = buildBriefingContext(store);
+      const ctx = await buildBriefingContext(store);
 
       expect(ctx.recentMood).toContain('stressed');
     });
 
-    it('should pull relevant patterns', () => {
+    it('should pull relevant patterns', async () => {
       store.addObservation('pattern', 'Jan skips gym on Wednesdays', 0.8, 'inferred');
       store.addObservation('pattern', 'Jan is most productive in the morning', 0.7, 'inferred');
       store.addObservation('pattern', 'Jan checks email at noon daily', 0.6, 'inferred');
 
-      const ctx = buildBriefingContext(store);
+      const ctx = await buildBriefingContext(store);
 
       expect(ctx.patterns.length).toBeGreaterThan(0);
       // Should include morning pattern (matches 'morning' keyword)
       expect(ctx.patterns.some((p) => p.includes('morning') || p.includes('daily'))).toBe(true);
     });
 
-    it('should pull yesterday conversation summaries', () => {
+    it('should pull yesterday conversation summaries', async () => {
       // Create a conversation dated yesterday
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
@@ -96,13 +109,13 @@ describe('Morning Briefing', () => {
         'UPDATE conversations SET started_at = ? WHERE id = ?',
       ).run(`${yesterdayStr}T08:00:00.000Z`, convId);
 
-      const ctx = buildBriefingContext(store);
+      const ctx = await buildBriefingContext(store);
 
       expect(ctx.yesterdaySummaries).toHaveLength(1);
       expect(ctx.yesterdaySummaries[0]).toContain('morning exchange');
     });
 
-    it('should pull yesterday daily_summary from compression', () => {
+    it('should pull yesterday daily_summary from compression', async () => {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
       const yesterdayStr = yesterday.toISOString().slice(0, 10);
@@ -115,44 +128,59 @@ describe('Morning Briefing', () => {
         "UPDATE observations SET observed_at = ? WHERE category = 'daily_summary'",
       ).run(`${yesterdayStr}T21:00:00.000Z`);
 
-      const ctx = buildBriefingContext(store);
+      const ctx = await buildBriefingContext(store);
 
       expect(ctx.yesterdaySummaries.some((s) => s.includes('productive day'))).toBe(true);
     });
 
-    it('should include priorities from scheduled actions', () => {
+    it('should include priorities from scheduled actions', async () => {
       const soon = new Date(Date.now() + 2 * 3600000).toISOString();
       store.addScheduledAction('reminder', 'Call important client', soon, 'high');
 
-      const ctx = buildBriefingContext(store);
+      const ctx = await buildBriefingContext(store);
 
       expect(ctx.priorities.length).toBeGreaterThan(0);
       expect(ctx.priorities.some((p) => p.includes('client'))).toBe(true);
+    });
+
+    it('should include weather when available', async () => {
+      const mockReport = {
+        current: { temperature: 14, apparentTemperature: 11, weatherCode: 2, windSpeed: 12, humidity: 58, description: 'Partly cloudy' },
+        forecast: [],
+        location: 'Graz, Austria',
+        fetchedAt: new Date().toISOString(),
+      };
+      vi.mocked(getWeather).mockResolvedValue(mockReport);
+      vi.mocked(formatWeatherForClaude).mockReturnValue('Graz, Austria — Partly cloudy, 14°C');
+
+      const ctx = await buildBriefingContext(store);
+
+      expect(ctx.weather).toBe('Graz, Austria — Partly cloudy, 14°C');
     });
   });
 
   // ── Prompt Formatting ──────────────────────────────────────────
 
   describe('formatBriefingPrompt', () => {
-    it('should format basic context', () => {
-      const ctx = buildBriefingContext(store);
+    it('should format basic context', async () => {
+      const ctx = await buildBriefingContext(store);
       const prompt = formatBriefingPrompt(ctx);
 
       expect(prompt).toContain('Today is');
       expect(prompt).toMatch(/\d{4}-\d{2}-\d{2}/);
     });
 
-    it('should include yesterday summaries when present', () => {
+    it('should include yesterday summaries when present', async () => {
       store.addObservation('commitment', 'Call the dentist', 1.0, 'told');
 
-      const ctx = buildBriefingContext(store);
+      const ctx = await buildBriefingContext(store);
       const prompt = formatBriefingPrompt(ctx);
 
       expect(prompt).toContain('PENDING COMMITMENTS');
       expect(prompt).toContain('dentist');
     });
 
-    it('should include all sections when context is rich', () => {
+    it('should include all sections when context is rich', async () => {
       store.addObservation('commitment', 'Submit proposal', 1.0, 'told');
       store.addObservation('follow_up', 'Check supplier response', 0.9, 'inferred');
       store.addObservation('emotional_state', 'Jan is motivated', 0.8, 'observed');
@@ -161,7 +189,7 @@ describe('Morning Briefing', () => {
       const soon = new Date(Date.now() + 2 * 3600000).toISOString();
       store.addScheduledAction('reminder', 'Team meeting', soon, 'medium');
 
-      const ctx = buildBriefingContext(store);
+      const ctx = await buildBriefingContext(store);
       const prompt = formatBriefingPrompt(ctx);
 
       expect(prompt).toContain('PENDING COMMITMENTS');
@@ -171,8 +199,8 @@ describe('Morning Briefing', () => {
       expect(prompt).toContain('LAST KNOWN MOOD');
     });
 
-    it('should omit empty sections', () => {
-      const ctx = buildBriefingContext(store);
+    it('should omit empty sections', async () => {
+      const ctx = await buildBriefingContext(store);
       const prompt = formatBriefingPrompt(ctx);
 
       expect(prompt).not.toContain('YESTERDAY');
@@ -180,6 +208,25 @@ describe('Morning Briefing', () => {
       expect(prompt).not.toContain('FOLLOW-UPS');
       expect(prompt).not.toContain('PRIORITIES');
       expect(prompt).not.toContain('LAST KNOWN MOOD');
+    });
+
+    it('should include weather section when available', () => {
+      const ctx = {
+        dayName: 'Monday',
+        dateStr: '2026-03-09',
+        dayType: 'weekday',
+        yesterdaySummaries: [],
+        pendingCommitments: [],
+        followUps: [],
+        priorities: [],
+        patterns: [],
+        recentMood: null,
+        weather: 'Graz, Austria — Partly cloudy, 14°C',
+      };
+      const prompt = formatBriefingPrompt(ctx);
+
+      expect(prompt).toContain('WEATHER:');
+      expect(prompt).toContain('Partly cloudy, 14°C');
     });
   });
 
@@ -316,7 +363,7 @@ describe('Morning Briefing', () => {
         'Team standup in two hours. I\'d suggest tackling the report first while your energy is at its peak.',
       );
 
-      const ctx = buildBriefingContext(store);
+      const ctx = await buildBriefingContext(store);
       expect(ctx.pendingCommitments.length).toBe(2);
       expect(ctx.followUps.length).toBe(1);
       expect(ctx.priorities.length).toBeGreaterThan(0);

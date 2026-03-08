@@ -1,11 +1,19 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { executeTools } from '../tool-executor';
 import { MemoryStore } from '../../memory/store';
 import { Database } from '../../db/database';
 
+vi.mock('../../integrations/weather', () => ({
+  getWeather: vi.fn(),
+  formatWeatherForClaude: vi.fn(),
+}));
+
+import { getWeather, formatWeatherForClaude } from '../../integrations/weather';
+
 let store: MemoryStore;
 
 beforeEach(() => {
+  vi.resetAllMocks();
   const db = new Database(':memory:');
   store = new MemoryStore(db);
 });
@@ -14,8 +22,8 @@ describe('Tool Executor', () => {
   // ── Remember Tool ──────────────────────────────────────────────
 
   describe('remember', () => {
-    it('should store a fact with told source when confidence >= 0.9', () => {
-      const results = executeTools(store, [{
+    it('should store a fact with told source when confidence >= 0.9', async () => {
+      const results = await executeTools(store, [{
         id: 'tool_1',
         name: 'remember',
         input: {
@@ -36,8 +44,8 @@ describe('Tool Executor', () => {
       expect(obs[0].source).toBe('told');
     });
 
-    it('should store with observed source when confidence 0.6-0.89', () => {
-      executeTools(store, [{
+    it('should store with observed source when confidence 0.6-0.89', async () => {
+      await executeTools(store, [{
         id: 'tool_1',
         name: 'remember',
         input: { category: 'preference', content: 'Jan prefers morning workouts', confidence: 0.7 },
@@ -47,8 +55,8 @@ describe('Tool Executor', () => {
       expect(obs[0].source).toBe('observed');
     });
 
-    it('should store with inferred source when confidence < 0.6', () => {
-      executeTools(store, [{
+    it('should store with inferred source when confidence < 0.6', async () => {
+      await executeTools(store, [{
         id: 'tool_1',
         name: 'remember',
         input: { category: 'emotional_state', content: 'Jan seems stressed', confidence: 0.5 },
@@ -58,8 +66,8 @@ describe('Tool Executor', () => {
       expect(obs[0].source).toBe('inferred');
     });
 
-    it('should store commitments', () => {
-      executeTools(store, [{
+    it('should store commitments', async () => {
+      await executeTools(store, [{
         id: 'tool_1',
         name: 'remember',
         input: { category: 'commitment', content: 'Jan will go to the gym tomorrow', confidence: 1.0 },
@@ -70,8 +78,8 @@ describe('Tool Executor', () => {
       expect(obs[0].content).toContain('gym');
     });
 
-    it('should reject invalid categories', () => {
-      const results = executeTools(store, [{
+    it('should reject invalid categories', async () => {
+      const results = await executeTools(store, [{
         id: 'tool_1',
         name: 'remember',
         input: { category: 'invalid', content: 'test', confidence: 0.5 },
@@ -85,11 +93,11 @@ describe('Tool Executor', () => {
   // ── Recall Tool ────────────────────────────────────────────────
 
   describe('recall', () => {
-    it('should find stored observations by topic', () => {
+    it('should find stored observations by topic', async () => {
       store.addObservation('fact', 'Jan goes to the gym 4 times a week', 0.8, 'observed');
       store.addObservation('fact', 'Jan likes Italian food', 0.9, 'told');
 
-      const results = executeTools(store, [{
+      const results = await executeTools(store, [{
         id: 'tool_1',
         name: 'recall',
         input: { query: 'gym' },
@@ -99,8 +107,8 @@ describe('Tool Executor', () => {
       expect(results[0].content).not.toContain('Italian');
     });
 
-    it('should return "no memories" when nothing matches', () => {
-      const results = executeTools(store, [{
+    it('should return "no memories" when nothing matches', async () => {
+      const results = await executeTools(store, [{
         id: 'tool_1',
         name: 'recall',
         input: { query: 'quantum physics' },
@@ -113,8 +121,8 @@ describe('Tool Executor', () => {
   // ── Schedule Reminder Tool ─────────────────────────────────────
 
   describe('schedule_reminder', () => {
-    it('should create a scheduled action', () => {
-      const results = executeTools(store, [{
+    it('should create a scheduled action', async () => {
+      const results = await executeTools(store, [{
         id: 'tool_1',
         name: 'schedule_reminder',
         input: {
@@ -134,8 +142,8 @@ describe('Tool Executor', () => {
       expect(pending[0].stakes_level).toBe('medium');
     });
 
-    it('should default stakes to low', () => {
-      executeTools(store, [{
+    it('should default stakes to low', async () => {
+      await executeTools(store, [{
         id: 'tool_1',
         name: 'schedule_reminder',
         input: {
@@ -148,8 +156,8 @@ describe('Tool Executor', () => {
       expect(pending[0].stakes_level).toBe('low');
     });
 
-    it('should reject invalid trigger times', () => {
-      const results = executeTools(store, [{
+    it('should reject invalid trigger times', async () => {
+      const results = await executeTools(store, [{
         id: 'tool_1',
         name: 'schedule_reminder',
         input: {
@@ -166,11 +174,11 @@ describe('Tool Executor', () => {
   // ── List Pending Tool ──────────────────────────────────────────
 
   describe('list_pending', () => {
-    it('should list pending actions', () => {
+    it('should list pending actions', async () => {
       store.addScheduledAction('reminder', 'Call electrician', '2026-03-09T14:00:00', 'medium');
       store.addScheduledAction('reminder', 'Buy groceries', '2026-03-09T10:00:00', 'low');
 
-      const results = executeTools(store, [{
+      const results = await executeTools(store, [{
         id: 'tool_1',
         name: 'list_pending',
         input: {},
@@ -180,8 +188,8 @@ describe('Tool Executor', () => {
       expect(results[0].content).toContain('Buy groceries');
     });
 
-    it('should return empty message when no pending actions', () => {
-      const results = executeTools(store, [{
+    it('should return empty message when no pending actions', async () => {
+      const results = await executeTools(store, [{
         id: 'tool_1',
         name: 'list_pending',
         input: {},
@@ -190,11 +198,11 @@ describe('Tool Executor', () => {
       expect(results[0].content).toContain('No pending');
     });
 
-    it('should not list done actions', () => {
+    it('should not list done actions', async () => {
       const id = store.addScheduledAction('reminder', 'Done task', '2026-03-09T10:00:00', 'low');
       store.markActionDone(id);
 
-      const results = executeTools(store, [{
+      const results = await executeTools(store, [{
         id: 'tool_1',
         name: 'list_pending',
         input: {},
@@ -204,11 +212,50 @@ describe('Tool Executor', () => {
     });
   });
 
+  // ── Weather Tool ──────────────────────────────────────────────
+
+  describe('get_current_weather', () => {
+    it('should return formatted weather report', async () => {
+      const mockReport = {
+        current: { temperature: 12, apparentTemperature: 9, weatherCode: 2, windSpeed: 15, humidity: 65, description: 'Partly cloudy' },
+        forecast: [],
+        location: 'Graz, Austria',
+        fetchedAt: new Date().toISOString(),
+      };
+      vi.mocked(getWeather).mockResolvedValue(mockReport);
+      vi.mocked(formatWeatherForClaude).mockReturnValue('Graz, Austria — Partly cloudy, 12°C');
+
+      const results = await executeTools(store, [{
+        id: 'tool_1',
+        name: 'get_current_weather',
+        input: {},
+      }]);
+
+      expect(results[0].content).toBe('Graz, Austria — Partly cloudy, 12°C');
+      expect(results[0].is_error).toBeUndefined();
+      expect(getWeather).toHaveBeenCalledOnce();
+      expect(formatWeatherForClaude).toHaveBeenCalledWith(mockReport);
+    });
+
+    it('should handle weather API errors gracefully', async () => {
+      vi.mocked(getWeather).mockRejectedValue(new Error('Weather API error: 503'));
+
+      const results = await executeTools(store, [{
+        id: 'tool_1',
+        name: 'get_current_weather',
+        input: {},
+      }]);
+
+      expect(results[0].is_error).toBe(true);
+      expect(results[0].content).toContain('Weather API error');
+    });
+  });
+
   // ── Multiple Tools ─────────────────────────────────────────────
 
   describe('multiple tools', () => {
-    it('should execute multiple tool calls in one batch', () => {
-      const results = executeTools(store, [
+    it('should execute multiple tool calls in one batch', async () => {
+      const results = await executeTools(store, [
         {
           id: 'tool_1',
           name: 'remember',
@@ -230,8 +277,8 @@ describe('Tool Executor', () => {
   // ── Unknown Tool ───────────────────────────────────────────────
 
   describe('unknown tool', () => {
-    it('should return error for unknown tool name', () => {
-      const results = executeTools(store, [{
+    it('should return error for unknown tool name', async () => {
+      const results = await executeTools(store, [{
         id: 'tool_1',
         name: 'nonexistent_tool',
         input: {},

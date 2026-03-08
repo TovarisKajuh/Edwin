@@ -2,11 +2,12 @@
  * Tool Executor — handles Edwin's tool calls during conversations.
  *
  * When Claude decides to use a tool (remember, recall, schedule_reminder,
- * list_pending), this module executes it against the memory store and
- * returns the result for Claude to continue reasoning.
+ * list_pending, get_current_weather), this module executes it against the
+ * memory store and returns the result for Claude to continue reasoning.
  */
 
 import { MemoryStore } from '../memory/store.js';
+import { getWeather, formatWeatherForClaude } from '../integrations/weather.js';
 import type { Source } from '@edwin/shared';
 
 export interface ToolResult {
@@ -19,25 +20,27 @@ interface ToolInput {
   [key: string]: unknown;
 }
 
-export function executeTools(
+export async function executeTools(
   store: MemoryStore,
   toolCalls: { id: string; name: string; input: ToolInput }[],
-): ToolResult[] {
-  return toolCalls.map((call) => {
-    try {
-      const result = executeSingleTool(store, call.name, call.input);
-      return { tool_use_id: call.id, content: result };
-    } catch (err) {
-      return {
-        tool_use_id: call.id,
-        content: `Tool error: ${(err as Error).message}`,
-        is_error: true,
-      };
-    }
-  });
+): Promise<ToolResult[]> {
+  return Promise.all(
+    toolCalls.map(async (call) => {
+      try {
+        const result = await executeSingleTool(store, call.name, call.input);
+        return { tool_use_id: call.id, content: result };
+      } catch (err) {
+        return {
+          tool_use_id: call.id,
+          content: `Tool error: ${(err as Error).message}`,
+          is_error: true,
+        };
+      }
+    }),
+  );
 }
 
-function executeSingleTool(store: MemoryStore, name: string, input: ToolInput): string {
+async function executeSingleTool(store: MemoryStore, name: string, input: ToolInput): Promise<string> {
   switch (name) {
     case 'remember':
       return handleRemember(store, input);
@@ -47,6 +50,8 @@ function executeSingleTool(store: MemoryStore, name: string, input: ToolInput): 
       return handleScheduleReminder(store, input);
     case 'list_pending':
       return handleListPending(store, input);
+    case 'get_current_weather':
+      return handleGetCurrentWeather();
     default:
       throw new Error(`Unknown tool: ${name}`);
   }
@@ -117,4 +122,9 @@ function handleListPending(store: MemoryStore, input: ToolInput): string {
   });
 
   return `Pending actions:\n${formatted.join('\n')}`;
+}
+
+async function handleGetCurrentWeather(): Promise<string> {
+  const report = await getWeather();
+  return formatWeatherForClaude(report);
 }

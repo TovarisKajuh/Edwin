@@ -40,10 +40,24 @@ export default function DashboardPage() {
   return (
     <div className="mx-auto max-w-4xl p-6 pt-8 md:p-10">
       <header className="mb-8">
-        <h1 className="text-2xl font-light text-zinc-100 md:text-3xl">
-          {data.greeting}
-        </h1>
-        <p className="mt-1 text-sm text-zinc-500">{data.date}</p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-light text-zinc-100 md:text-3xl">
+              {data.greeting}
+            </h1>
+            <p className="mt-1 text-sm text-zinc-500">{data.date}</p>
+          </div>
+          {data.weather && (
+            <div className="text-right">
+              <p className="text-2xl font-light text-zinc-100">
+                {data.weather.temp}&deg;C
+              </p>
+              <p className="text-xs text-zinc-500">
+                {data.weather.condition} &middot; {data.weather.high}&deg;/{data.weather.low}&deg;
+              </p>
+            </div>
+          )}
+        </div>
       </header>
 
       <div className="grid gap-6 md:grid-cols-2">

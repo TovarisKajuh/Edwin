@@ -5,7 +5,7 @@ import { textToSpeech } from '../voice/speak.js';
 
 export async function briefingRoutes(server: FastifyInstance, store: MemoryStore) {
   server.get('/api/briefing', async () => {
-    const context = buildBriefingContext(store);
+    const context = await buildBriefingContext(store);
     const text = await generateMorningBriefing(store);
     const audioBuffer = await textToSpeech(text);
 

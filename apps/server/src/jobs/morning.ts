@@ -21,6 +21,7 @@ import { getTimeOfDay, getDayType } from '../soul/personality.js';
 import { getTopPriorities, formatPriorities } from '../brain/thinking/priority-engine.js';
 import { textToSpeech } from '../voice/speak.js';
 import { sendPushToAll } from '../push/push-service.js';
+import { getWeather, formatWeatherForClaude } from '../integrations/weather.js';
 
 export interface BriefingContext {
   dayName: string;
@@ -32,13 +33,14 @@ export interface BriefingContext {
   priorities: string[];
   patterns: string[];
   recentMood: string | null;
+  weather: string | null;
 }
 
 /**
  * Gather all context Edwin needs for the morning briefing.
- * No Claude call — just data gathering.
+ * Includes weather fetch — the only async part.
  */
-export function buildBriefingContext(store: MemoryStore): BriefingContext {
+export async function buildBriefingContext(store: MemoryStore): Promise<BriefingContext> {
   const now = new Date();
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const dayName = dayNames[now.getDay()];
@@ -93,6 +95,15 @@ export function buildBriefingContext(store: MemoryStore): BriefingContext {
     ? relevantPatterns.slice(0, 5).map((p) => p.content)
     : patternObs.slice(0, 3).map((p) => p.content);
 
+  // ── Weather ──────────────────────────────────────────────────────
+  let weather: string | null = null;
+  try {
+    const report = await getWeather();
+    weather = formatWeatherForClaude(report);
+  } catch {
+    // Weather is nice-to-have, not critical
+  }
+
   return {
     dayName,
     dateStr,
@@ -103,6 +114,7 @@ export function buildBriefingContext(store: MemoryStore): BriefingContext {
     priorities,
     patterns,
     recentMood: moodText,
+    weather,
   };
 }
 
@@ -159,6 +171,13 @@ export function formatBriefingPrompt(ctx: BriefingContext): string {
     }
   }
 
+  // Weather
+  if (ctx.weather) {
+    sections.push('');
+    sections.push('WEATHER:');
+    sections.push(`  ${ctx.weather}`);
+  }
+
   // Mood
   if (ctx.recentMood) {
     sections.push('');
@@ -185,7 +204,8 @@ function buildBriefingSystemPrompt(ctx: BriefingContext): string {
       : '2. Skip yesterday recap (no conversations recorded)',
     '3. Today\'s top priorities (up to 3 — from the priority list, or infer from commitments)',
     '4. Any commitments or follow-ups due today',
-    '5. A motivational close that sets the right tone',
+    '5. Weather mention if available (naturally woven in, not a separate section)',
+    '6. A motivational close that sets the right tone',
     '',
     'Rules:',
     '- Keep the entire briefing under 150 words',
@@ -206,7 +226,7 @@ function buildBriefingSystemPrompt(ctx: BriefingContext): string {
  * Generate the morning briefing via Claude with full context.
  */
 export async function generateMorningBriefing(store: MemoryStore): Promise<string> {
-  const ctx = buildBriefingContext(store);
+  const ctx = await buildBriefingContext(store);
   const systemPrompt = buildBriefingSystemPrompt(ctx);
   const contextPrompt = formatBriefingPrompt(ctx);
 

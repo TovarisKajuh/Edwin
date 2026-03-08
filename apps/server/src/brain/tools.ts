@@ -94,4 +94,16 @@ export const EDWIN_TOOLS: Tool[] = [
       required: [],
     },
   },
+  {
+    name: 'get_current_weather',
+    description:
+      'Get current weather and 3-day forecast for Graz, Austria (Jan\'s location). ' +
+      'Use when Jan asks about weather, when suggesting outdoor activities, or when weather ' +
+      'is relevant to plans. Do NOT announce the tool — just use the data naturally.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {},
+      required: [],
+    },
+  },
 ];

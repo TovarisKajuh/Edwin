@@ -3,6 +3,7 @@ import type { MemoryStore } from '../memory/store.js';
 import type { DashboardData } from '@edwin/shared';
 import { getTimeOfDay } from '../soul/personality.js';
 import { calculatePriorities } from '../brain/thinking/priority-engine.js';
+import { getWeather, formatWeatherForDashboard } from '../integrations/weather.js';
 
 export async function dashboardRoutes(server: FastifyInstance, store: MemoryStore) {
   server.get('/api/dashboard', async () => {
@@ -31,6 +32,15 @@ export async function dashboardRoutes(server: FastifyInstance, store: MemoryStor
         status: 'pending' as const,
       }));
 
+    // Weather (best-effort, don't block dashboard)
+    let weather: DashboardData['weather'];
+    try {
+      const report = await getWeather();
+      weather = formatWeatherForDashboard(report);
+    } catch {
+      // Weather is nice-to-have
+    }
+
     const data: DashboardData = {
       greeting,
       date: now.toLocaleDateString('en-GB', {
@@ -39,6 +49,7 @@ export async function dashboardRoutes(server: FastifyInstance, store: MemoryStor
         month: 'long',
         day: 'numeric',
       }),
+      weather,
       schedule: [],
       pendingActions,
     };
