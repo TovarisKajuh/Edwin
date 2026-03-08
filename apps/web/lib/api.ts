@@ -1,13 +1,26 @@
 import type { ChatRequest, ChatResponse, DashboardData, BriefingResponse, StreamDoneEvent, Notification, NotificationCountResponse } from '@edwin/shared';
+import { getAuthHeaders } from './auth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+export async function verifyAccessKey(key: string): Promise<boolean> {
+  const res = await fetch(`${API_URL}/api/auth/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key }),
+  });
+  if (!res.ok) return false;
+  const data = await res.json();
+  return data.valid === true;
+}
 
 export async function sendMessage(message: string, conversationId?: number): Promise<ChatResponse> {
   const res = await fetch(`${API_URL}/api/chat`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify({ message, conversationId } satisfies ChatRequest),
   });
+  if (res.status === 401) throw new AuthError();
   if (!res.ok) throw new Error(`Chat error: ${res.status}`);
   return res.json();
 }
@@ -23,10 +36,11 @@ export async function streamMessage(
 ): Promise<StreamDoneEvent> {
   const res = await fetch(`${API_URL}/api/chat/stream`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify({ message, conversationId } satisfies ChatRequest),
   });
 
+  if (res.status === 401) throw new AuthError();
   if (!res.ok) throw new Error(`Stream error: ${res.status}`);
   if (!res.body) throw new Error('No response body');
 
@@ -71,9 +85,10 @@ export async function sendVoice(
 ): Promise<{ audio: ArrayBuffer; message: string; conversationId: number }> {
   const res = await fetch(`${API_URL}/api/voice`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify({ transcript, conversationId }),
   });
+  if (res.status === 401) throw new AuthError();
   if (!res.ok) throw new Error(`Voice error: ${res.status}`);
 
   const contentType = res.headers.get('content-type') || '';
@@ -91,26 +106,38 @@ export async function sendVoice(
 }
 
 export async function getDashboard(): Promise<DashboardData> {
-  const res = await fetch(`${API_URL}/api/dashboard`);
+  const res = await fetch(`${API_URL}/api/dashboard`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (res.status === 401) throw new AuthError();
   if (!res.ok) throw new Error(`Dashboard error: ${res.status}`);
   return res.json();
 }
 
 export async function getBriefing(): Promise<BriefingResponse> {
-  const res = await fetch(`${API_URL}/api/briefing`);
+  const res = await fetch(`${API_URL}/api/briefing`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (res.status === 401) throw new AuthError();
   if (!res.ok) throw new Error(`Briefing error: ${res.status}`);
   return res.json();
 }
 
 export async function getNotifications(): Promise<Notification[]> {
-  const res = await fetch(`${API_URL}/api/notifications`);
+  const res = await fetch(`${API_URL}/api/notifications`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (res.status === 401) throw new AuthError();
   if (!res.ok) throw new Error(`Notifications error: ${res.status}`);
   const data = await res.json();
   return data.notifications;
 }
 
 export async function getNotificationCount(): Promise<number> {
-  const res = await fetch(`${API_URL}/api/notifications/count`);
+  const res = await fetch(`${API_URL}/api/notifications/count`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (res.status === 401) throw new AuthError();
   if (!res.ok) throw new Error(`Notification count error: ${res.status}`);
   const data: NotificationCountResponse = await res.json();
   return data.count;
@@ -119,6 +146,15 @@ export async function getNotificationCount(): Promise<number> {
 export async function markNotificationRead(id: number): Promise<void> {
   const res = await fetch(`${API_URL}/api/notifications/${id}/read`, {
     method: 'POST',
+    headers: { ...getAuthHeaders() },
   });
+  if (res.status === 401) throw new AuthError();
   if (!res.ok) throw new Error(`Mark read error: ${res.status}`);
+}
+
+export class AuthError extends Error {
+  constructor() {
+    super('Unauthorized');
+    this.name = 'AuthError';
+  }
 }

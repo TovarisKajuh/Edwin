@@ -25,6 +25,39 @@ await server.register(cors, {
   exposedHeaders: ['X-Edwin-Message', 'X-Edwin-Conversation-Id'],
 });
 
+// ── Authentication: Lock all API routes behind access key ────────
+const ACCESS_KEY = process.env.EDWIN_ACCESS_KEY;
+if (!ACCESS_KEY) {
+  console.warn('[SECURITY] EDWIN_ACCESS_KEY not set — API is UNPROTECTED');
+}
+
+server.addHook('onRequest', async (request, reply) => {
+  // Health check is always public
+  if (request.url === '/health') return;
+
+  // Auth verification endpoint is public
+  if (request.url === '/api/auth/verify') return;
+
+  if (!ACCESS_KEY) return; // No key configured = no auth (dev mode)
+
+  const authHeader = request.headers.authorization;
+  const key = authHeader?.startsWith('Bearer ')
+    ? authHeader.slice(7)
+    : null;
+
+  if (key !== ACCESS_KEY) {
+    reply.code(401).send({ error: 'Unauthorized' });
+  }
+});
+
+// ── Auth verification endpoint ──────────────────────────────────
+server.post('/api/auth/verify', async (request) => {
+  const body = request.body as { key?: string } | null;
+  const key = body?.key;
+  if (!ACCESS_KEY) return { valid: true }; // Dev mode
+  return { valid: key === ACCESS_KEY };
+});
+
 // Initialize core systems
 const db = new Database();
 const store = new MemoryStore(db);
