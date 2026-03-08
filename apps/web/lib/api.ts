@@ -1,4 +1,4 @@
-import type { ChatRequest, ChatResponse, DashboardData, BriefingResponse, StreamDoneEvent } from '@edwin/shared';
+import type { ChatRequest, ChatResponse, DashboardData, BriefingResponse, StreamDoneEvent, Notification, NotificationCountResponse } from '@edwin/shared';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -100,4 +100,25 @@ export async function getBriefing(): Promise<BriefingResponse> {
   const res = await fetch(`${API_URL}/api/briefing`);
   if (!res.ok) throw new Error(`Briefing error: ${res.status}`);
   return res.json();
+}
+
+export async function getNotifications(): Promise<Notification[]> {
+  const res = await fetch(`${API_URL}/api/notifications`);
+  if (!res.ok) throw new Error(`Notifications error: ${res.status}`);
+  const data = await res.json();
+  return data.notifications;
+}
+
+export async function getNotificationCount(): Promise<number> {
+  const res = await fetch(`${API_URL}/api/notifications/count`);
+  if (!res.ok) throw new Error(`Notification count error: ${res.status}`);
+  const data: NotificationCountResponse = await res.json();
+  return data.count;
+}
+
+export async function markNotificationRead(id: number): Promise<void> {
+  const res = await fetch(`${API_URL}/api/notifications/${id}/read`, {
+    method: 'POST',
+  });
+  if (!res.ok) throw new Error(`Mark read error: ${res.status}`);
 }

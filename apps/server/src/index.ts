@@ -9,6 +9,7 @@ import { chatRoutes } from './routes/chat.js';
 import { voiceRoutes } from './routes/voice.js';
 import { briefingRoutes } from './routes/briefing.js';
 import { dashboardRoutes } from './routes/dashboard.js';
+import { notificationRoutes } from './routes/notifications.js';
 import { startScheduler } from './jobs/scheduler.js';
 
 dotenv.config({ path: '../../.env' });
@@ -37,6 +38,7 @@ await chatRoutes(server, pipeline);
 await voiceRoutes(server, pipeline);
 await briefingRoutes(server, store);
 await dashboardRoutes(server, store);
+await notificationRoutes(server, store);
 
 server.get('/health', async () => {
   return { status: 'ok', name: 'Edwin', alive: true };

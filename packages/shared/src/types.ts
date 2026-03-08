@@ -73,6 +73,19 @@ export interface PendingAction {
   status: 'pending' | 'proposed' | 'accepted' | 'declined' | 'done';
 }
 
+// Notifications
+export interface Notification {
+  id: number;
+  message: string;
+  timestamp: string;
+  read: boolean;
+  stakesLevel: StakesLevel;
+}
+
+export interface NotificationCountResponse {
+  count: number;
+}
+
 // Streaming chat events (SSE)
 export interface StreamDeltaEvent {
   delta: string;

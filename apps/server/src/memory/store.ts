@@ -604,6 +604,36 @@ export class MemoryStore {
     `).run(id);
   }
 
+  /** Get notifications (type='notification'), most recent first. Pending = unread. */
+  getNotifications(limit: number = 20): { id: number; description: string; trigger_time: string; stakes_level: string; status: string }[] {
+    return this.db.raw().prepare(`
+      SELECT id, description, trigger_time, stakes_level, status
+      FROM scheduled_actions
+      WHERE type = 'notification'
+      ORDER BY trigger_time DESC
+      LIMIT ?
+    `).all(limit) as { id: number; description: string; trigger_time: string; stakes_level: string; status: string }[];
+  }
+
+  /** Count unread notifications (type='notification' AND status='pending') */
+  getUnreadNotificationCount(): number {
+    const row = this.db.raw().prepare(`
+      SELECT COUNT(*) as count FROM scheduled_actions
+      WHERE type = 'notification' AND status = 'pending'
+    `).get() as { count: number };
+    return row.count;
+  }
+
+  /** Mark a notification as read (sets status to 'done') */
+  markNotificationRead(id: number): boolean {
+    const result = this.db.raw().prepare(`
+      UPDATE scheduled_actions
+      SET status = 'done', updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND type = 'notification'
+    `).run(id);
+    return result.changes > 0;
+  }
+
   buildMemorySnapshot(): string {
     const identitySnapshot = this.buildIdentitySnapshot();
 
