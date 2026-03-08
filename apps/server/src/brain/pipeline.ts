@@ -35,12 +35,13 @@ export class BrainPipeline {
     // 3. Build context
     const ctx = buildContext(this.store, conversationId);
 
-    // 4. Build system prompt
+    // 4. Build system prompt (includes self-awareness warnings)
     const systemPrompt = buildSystemPrompt({
       timeOfDay: ctx.timeOfDay,
       dayType: ctx.dayType,
       recentContext: ctx.recentContext,
       memorySnapshot: ctx.memorySnapshot,
+      healthWarnings: ctx.healthWarnings,
     });
 
     // 5. Format conversation history for Claude
@@ -78,6 +79,7 @@ export class BrainPipeline {
       dayType: ctx.dayType,
       recentContext: ctx.recentContext,
       memorySnapshot: ctx.memorySnapshot,
+      healthWarnings: ctx.healthWarnings,
     });
 
     // 3. Call Claude with briefing prompt

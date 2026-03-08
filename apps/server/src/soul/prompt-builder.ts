@@ -9,6 +9,7 @@ export interface PromptContext {
   dayType: DayType;
   recentContext: string;
   memorySnapshot: string;
+  healthWarnings?: string | null;
 }
 
 export function buildSystemPrompt(ctx: PromptContext): string {
@@ -75,6 +76,11 @@ export function buildSystemPrompt(ctx: PromptContext): string {
     sections.push(
       ['[RECENT CONTEXT]', ctx.recentContext].join('\n')
     );
+  }
+
+  // 9. Self-awareness warnings (if any)
+  if (ctx.healthWarnings) {
+    sections.push(ctx.healthWarnings);
   }
 
   return sections.join('\n\n');

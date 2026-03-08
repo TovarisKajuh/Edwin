@@ -157,6 +157,26 @@ export class MemoryStore {
     `).get(channel) as ConversationRow | undefined;
   }
 
+  // ── Health / Diagnostics ───────────────────────────────────────────
+
+  /** Total number of observations in the database */
+  getObservationCount(): number {
+    const row = this.db.raw().prepare('SELECT COUNT(*) as count FROM observations').get() as { count: number };
+    return row.count;
+  }
+
+  /** Database file size in MB (0 for in-memory databases) */
+  getDatabaseSizeMB(): number {
+    try {
+      const row = this.db.raw().prepare(
+        "SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()"
+      ).get() as { size: number } | undefined;
+      return row ? row.size / (1024 * 1024) : 0;
+    } catch {
+      return 0;
+    }
+  }
+
   // ── Observation Queries ────────────────────────────────────────────
 
   /** Get all observations, most recent first. Nothing is ever deleted — old ones get compressed (Session 5). */

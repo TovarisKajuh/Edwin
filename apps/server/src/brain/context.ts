@@ -1,12 +1,14 @@
 import type { TimeOfDay, DayType } from '@edwin/shared';
 import { getTimeOfDay, getDayType } from '../soul/personality.js';
 import { MemoryStore } from '../memory/store.js';
+import { checkHealth, formatHealthWarnings } from './self-awareness.js';
 
 export interface BrainContext {
   timeOfDay: TimeOfDay;
   dayType: DayType;
   memorySnapshot: string;
   recentContext: string;
+  healthWarnings: string | null;
   conversationHistory: { role: string; content: string }[];
 }
 
@@ -37,11 +39,16 @@ export function buildContext(
     .map((m) => `${m.role}: ${m.content}`)
     .join('\n');
 
+  // Check Edwin's self-awareness (infrastructure health)
+  const warnings = checkHealth(store);
+  const healthWarnings = formatHealthWarnings(warnings);
+
   return {
     timeOfDay,
     dayType,
     memorySnapshot,
     recentContext,
+    healthWarnings,
     conversationHistory,
   };
 }
