@@ -18,7 +18,7 @@ export default function ChatPage() {
   const [conversationId, setConversationId] = useState<number | undefined>();
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { speak } = useAudio();
+  const { speak, stop: stopSpeaking } = useAudio();
   const nextId = useRef(1);
 
   const scrollToBottom = useCallback(() => {
@@ -43,6 +43,7 @@ export default function ChatPage() {
 
       setMessages((prev) => [...prev, janMessage]);
       setLoading(true);
+      stopSpeaking(); // Stop any previous Edwin speech
 
       // Create Edwin's message bubble immediately (empty, will fill via streaming)
       const edwinId = nextId.current++;
@@ -58,6 +59,22 @@ export default function ChatPage() {
 
       try {
         let fullText = '';
+        let spokenUpTo = 0;
+
+        const speakCompleteSentences = () => {
+          // Find the last sentence boundary in text accumulated so far
+          const unspoken = fullText.slice(spokenUpTo);
+          // Match sentences ending with . ! ? followed by space or end
+          const sentenceEnd = unspoken.search(/[.!?](?:\s|$)/);
+          if (sentenceEnd !== -1) {
+            const chunk = unspoken.slice(0, sentenceEnd + 1).trim();
+            if (chunk) {
+              speak(chunk);
+              spokenUpTo += sentenceEnd + 1;
+            }
+          }
+        };
+
         const result = await streamMessage(
           text,
           (delta) => {
@@ -68,15 +85,18 @@ export default function ChatPage() {
                 m.id === edwinId ? { ...m, content: m.content + delta } : m,
               ),
             );
+            // Speak each complete sentence as it arrives
+            speakCompleteSentences();
           },
           conversationId,
         );
 
         setConversationId(result.conversationId);
 
-        // TTS after stream completes
-        if (fullText) {
-          speak(fullText);
+        // Speak any remaining text that didn't end with punctuation
+        const remaining = fullText.slice(spokenUpTo).trim();
+        if (remaining) {
+          speak(remaining);
         }
       } catch {
         setMessages((prev) =>
@@ -94,7 +114,7 @@ export default function ChatPage() {
         setLoading(false);
       }
     },
-    [conversationId, speak],
+    [conversationId, speak, stopSpeaking],
   );
 
   return (
