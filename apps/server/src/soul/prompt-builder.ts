@@ -22,6 +22,7 @@ export interface PromptContext {
   financialContext?: string | null;
   socialContext?: string | null;
   inventoryContext?: string | null;
+  goalContext?: string | null;
 }
 
 export function buildSystemPrompt(ctx: PromptContext): string {
@@ -145,6 +146,11 @@ export function buildSystemPrompt(ctx: PromptContext): string {
   // 9.9. Inventory alerts
   if (ctx.inventoryContext) {
     sections.push(ctx.inventoryContext);
+  }
+
+  // 9.10. Vision progress
+  if (ctx.goalContext) {
+    sections.push(ctx.goalContext);
   }
 
   // 10. Soul directives (dynamic, memory-aware)

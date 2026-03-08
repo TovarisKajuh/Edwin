@@ -26,6 +26,7 @@ import { detectAndStorePatterns } from '../brain/understanding/pattern-detector.
 import { runHeartbeat, checkDueReminders } from './heartbeat.js';
 import { runEveningWindDown } from './evening.js';
 import { runWeeklyReview } from './weekly-review.js';
+import { generateMonthlySnapshot } from '../tracking/goals.js';
 
 const TZ = 'Europe/Vienna';
 
@@ -94,6 +95,17 @@ export function startScheduler(store: MemoryStore): void {
     }
   }, { timezone: TZ });
 
+  // ── 1st of MONTH: 06:00 — Monthly goal progress snapshot ────
+  cron.schedule('0 6 1 * *', async () => {
+    console.log('[Edwin] Monthly goal progress snapshot...');
+    try {
+      const snapshot = generateMonthlySnapshot(store);
+      console.log('[Edwin] Goal snapshot:', snapshot.split('\n')[1]);
+    } catch (error) {
+      console.error('[Edwin] Goal snapshot failed:', error);
+    }
+  }, { timezone: TZ });
+
   // ── SUNDAY: 19:00 — Weekly review ──────────────────────────
   cron.schedule('0 19 * * 0', async () => {
     console.log('[Edwin] Generating weekly review...');
@@ -125,7 +137,7 @@ export function startScheduler(store: MemoryStore): void {
   console.log([
     '[Edwin] Daily rhythm active (Europe/Vienna):',
     '  05:00 pre-wake | 05:30 briefing | 07-19 heartbeat (2h) | 19:30 wind-down',
-    '  Sun 19:00 weekly review | 21:00 patterns + compress | Sun 21:15 weekly compress',
+    '  1st 06:00 goal snapshot | Sun 19:00 weekly review | 21:00 patterns + compress | Sun 21:15 weekly compress',
     '  21:30-05:00 sleep (zero processes)',
   ].join('\n'));
 }

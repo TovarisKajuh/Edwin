@@ -12,6 +12,7 @@ import type { TimeOfDay, DayType } from '@edwin/shared';
 import { MemoryStore } from '../memory/store.js';
 import { generatePredictions, formatPredictions } from './understanding/predictor.js';
 import { getTopPriorities, formatPriorities } from './thinking/priority-engine.js';
+import { getGoalMotivation } from '../tracking/goals.js';
 
 export interface ReasoningBrief {
   temporal: string;
@@ -150,6 +151,12 @@ export function buildReasoningBrief(
   // Pending action awareness
   if (pendingActions.length > 0) {
     awareness.push(`${pendingActions.length} pending reminder(s) — mention if relevant to conversation.`);
+  }
+
+  // Goal-aware motivation
+  const goalMotivation = getGoalMotivation(store);
+  if (goalMotivation) {
+    awareness.push(goalMotivation);
   }
 
   // ── Behavioral predictions ─────────────────────────────────────

@@ -12,6 +12,7 @@ import { formatHabitSummary } from '../tracking/habits.js';
 import { formatFinancialContext } from '../tracking/finances.js';
 import { formatSocialContext } from '../tracking/social.js';
 import { formatInventoryContext } from '../tracking/inventory.js';
+import { formatGoalContext } from '../tracking/goals.js';
 
 export interface BrainContext {
   timeOfDay: TimeOfDay;
@@ -29,6 +30,7 @@ export interface BrainContext {
   financialContext: string | null;
   socialContext: string | null;
   inventoryContext: string | null;
+  goalContext: string | null;
   conversationHistory: { role: string; content: string }[];
 }
 
@@ -99,6 +101,9 @@ export function buildContext(
   // Build inventory context
   const inventoryCtx = formatInventoryContext(store);
 
+  // Build goal progress context
+  const goalCtx = formatGoalContext(store);
+
   return {
     timeOfDay,
     dayType,
@@ -115,6 +120,7 @@ export function buildContext(
     financialContext: financialCtx,
     socialContext: socialCtx,
     inventoryContext: inventoryCtx,
+    goalContext: goalCtx,
     conversationHistory,
   };
 }
