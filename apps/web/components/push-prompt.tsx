@@ -86,8 +86,8 @@ export function PushPrompt() {
         return;
       }
       // Permission granted but not subscribed — try silently
-      const ok = await subscribeToPush();
-      setState(ok ? 'hidden' : 'prompt');
+      await subscribeToPush();
+      setState('hidden');
       return;
     }
 
@@ -96,12 +96,14 @@ export function PushPrompt() {
   }
 
   async function handleAllow() {
-    const permission = await Notification.requestPermission();
-    if (permission === 'granted') {
-      const ok = await subscribeToPush();
-      setState(ok ? 'hidden' : 'prompt');
-    } else {
-      setState('hidden');
+    setState('hidden');
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        await subscribeToPush();
+      }
+    } catch {
+      // Silently fail — prompt is already hidden
     }
   }
 
