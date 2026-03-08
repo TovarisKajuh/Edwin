@@ -3,11 +3,12 @@ import { MemoryStore } from '../memory/store.js';
 import { extractMemories } from '../memory/extractor.js';
 import { buildSystemPrompt } from '../soul/prompt-builder.js';
 import { buildContext } from './context.js';
-import { callClaude, callClaudeWithTools, streamClaudeWithTools } from './reasoning.js';
+import { callClaudeWithTools, streamClaudeWithTools } from './reasoning.js';
 import { detectAndStoreMood } from './understanding/mood-detector.js';
 import { detectIntent, formatIntent } from './understanding/intent-detector.js';
 import { interpretContext, formatContextInterpretation } from './understanding/context-interpreter.js';
 import { EDWIN_TOOLS } from './tools.js';
+import { generateMorningBriefing } from '../jobs/morning.js';
 
 export interface PipelineResponse {
   message: string;
@@ -160,29 +161,6 @@ export class BrainPipeline {
   }
 
   async generateBriefing(): Promise<string> {
-    // 1. Build context (no conversation)
-    const ctx = buildContext(this.store);
-
-    // 2. Build system prompt
-    const systemPrompt = buildSystemPrompt({
-      timeOfDay: ctx.timeOfDay,
-      dayType: ctx.dayType,
-      recentContext: ctx.recentContext,
-      memorySnapshot: ctx.memorySnapshot,
-      healthWarnings: ctx.healthWarnings,
-      soulDirectives: ctx.soulDirectives,
-    });
-
-    // 3. Call Claude with briefing prompt (no tools needed for briefings)
-    const briefingPrompt =
-      'Generate a morning briefing for Jan. Include: a greeting using "sir", ' +
-      'context about the day ahead, a motivating thought, and one key focus area. ' +
-      'Keep it under 100 words.';
-
-    const response = await callClaude(systemPrompt, [
-      { role: 'user', content: briefingPrompt },
-    ]);
-
-    return response;
+    return generateMorningBriefing(this.store);
   }
 }

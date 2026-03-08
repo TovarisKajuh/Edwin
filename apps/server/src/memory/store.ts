@@ -250,6 +250,16 @@ export class MemoryStore {
     ).run(summary, id);
   }
 
+  /** Get conversation summaries for a specific date (YYYY-MM-DD) */
+  getConversationSummariesForDate(date: string): { summary: string; channel: string; started_at: string }[] {
+    return this.db.raw().prepare(`
+      SELECT summary, channel, started_at FROM conversations
+      WHERE DATE(started_at) = ?
+        AND summary IS NOT NULL
+      ORDER BY started_at ASC
+    `).all(date) as { summary: string; channel: string; started_at: string }[];
+  }
+
   // ── Date-Based Queries ────────────────────────────────────────────
 
   /** Get active observations for a specific date (YYYY-MM-DD) */

@@ -19,7 +19,6 @@
  */
 
 import cron from 'node-cron';
-import type { BrainPipeline } from '../brain/pipeline.js';
 import type { MemoryStore } from '../memory/store.js';
 import { runMorningBriefing } from './morning.js';
 import { compressDaily, compressWeekly, promoteObservations } from '../memory/compressor.js';
@@ -28,7 +27,7 @@ import { runHeartbeat, checkDueReminders } from './heartbeat.js';
 
 const TZ = 'Europe/Vienna';
 
-export function startScheduler(pipeline: BrainPipeline, store: MemoryStore): void {
+export function startScheduler(store: MemoryStore): void {
   // ── PRE-WAKE: 05:00 — Prepare morning context ───────────────
   cron.schedule('0 5 * * *', async () => {
     console.log('[Edwin] Pre-wake: gathering morning context...');
@@ -46,7 +45,7 @@ export function startScheduler(pipeline: BrainPipeline, store: MemoryStore): voi
   cron.schedule('30 5 * * *', async () => {
     console.log('[Edwin] Good morning. Preparing briefing...');
     try {
-      await runMorningBriefing(pipeline);
+      await runMorningBriefing(store);
       console.log('[Edwin] Morning briefing delivered.');
     } catch (error) {
       console.error('[Edwin] Morning briefing failed:', error);

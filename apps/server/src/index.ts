@@ -35,14 +35,14 @@ if (existing.length === 0) {
 // Register routes
 await chatRoutes(server, pipeline);
 await voiceRoutes(server, pipeline);
-await briefingRoutes(server, pipeline);
+await briefingRoutes(server, store);
 await dashboardRoutes(server, store);
 
 server.get('/health', async () => {
   return { status: 'ok', name: 'Edwin', alive: true };
 });
 
-startScheduler(pipeline, store);
+startScheduler(store);
 
 const port = parseInt(process.env.PORT || '3001');
 await server.listen({ port, host: '0.0.0.0' });
