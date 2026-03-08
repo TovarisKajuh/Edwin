@@ -12,6 +12,7 @@ export interface PromptContext {
   healthWarnings?: string | null;
   soulDirectives?: string;
   implicitIntent?: string | null;
+  contextSignal?: string | null;
 }
 
 export function buildSystemPrompt(ctx: PromptContext): string {
@@ -90,7 +91,12 @@ export function buildSystemPrompt(ctx: PromptContext): string {
     sections.push(ctx.implicitIntent);
   }
 
-  // 10. Self-awareness warnings (if any)
+  // 10. Context signal (deflection, venting, etc.)
+  if (ctx.contextSignal) {
+    sections.push(ctx.contextSignal);
+  }
+
+  // 11. Self-awareness warnings (if any)
   if (ctx.healthWarnings) {
     sections.push(ctx.healthWarnings);
   }
