@@ -16,6 +16,7 @@ import { callClaude } from '../brain/reasoning.js';
 import { buildReasoningBrief, formatReasoningBrief } from '../brain/reasoning-context.js';
 import { getTimeOfDay, getDayType } from '../soul/personality.js';
 import { sendPushToAll } from '../push/push-service.js';
+import { scanForFollowUps, formatFollowUps } from './follow-up-engine.js';
 
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 
@@ -91,16 +92,26 @@ export async function evaluateOutreach(store: MemoryStore): Promise<string | nul
   const brief = buildReasoningBrief(store, timeOfDay, dayType);
   const contextStr = formatReasoningBrief(brief);
 
+  // Scan for follow-up candidates
+  const followUpCandidates = scanForFollowUps(store, timeOfDay);
+  const followUpLines = formatFollowUps(followUpCandidates);
+
   // Check if there's anything meaningful to talk about
   // Predictions alone (e.g. meal window) are not enough — need real context
   const hasContent = brief.pendingActions.length > 0
     || brief.activeCommitments.length > 0
     || brief.priorities.length > 0
     || brief.knownPatterns.length > 0
-    || brief.recentMood !== null;
+    || brief.recentMood !== null
+    || followUpCandidates.length > 0;
 
   // If there's nothing in context, don't waste a Haiku call
   if (!hasContent) return null;
+
+  // Build follow-up section if there are candidates
+  const followUpSection = followUpLines.length > 0
+    ? '\n\nFOLLOW-UPS TO CONSIDER:\n' + followUpLines.map((l) => `  - ${l}`).join('\n')
+    : '';
 
   const prompt = [
     'You are Edwin, a personal life companion for Jan.',
@@ -108,10 +119,13 @@ export async function evaluateOutreach(store: MemoryStore): Promise<string | nul
     'decide whether to reach out to Jan right now.',
     '',
     contextStr,
+    followUpSection,
     '',
     'Rules:',
     '- Only reach out if there is a REAL reason: a due commitment, a relevant pattern,',
     '  a prediction worth acting on, or a follow-up worth checking.',
+    '- If there are FOLLOW-UPS listed above, prioritize asking about those.',
+    '- Ask ONE thing at a time. Don\'t pile multiple follow-ups into one message.',
     '- Do NOT reach out just to say hello or check in generically.',
     '- Do NOT repeat information Jan already knows.',
     '- If reaching out, write a SHORT message (1-2 sentences) as Edwin would speak.',
