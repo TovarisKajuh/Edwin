@@ -7,6 +7,7 @@ import { callClaudeWithTools, streamClaudeWithTools } from './reasoning.js';
 import { detectAndStoreMood } from './understanding/mood-detector.js';
 import { detectIntent, formatIntent } from './understanding/intent-detector.js';
 import { interpretContext, formatContextInterpretation } from './understanding/context-interpreter.js';
+import { detectAndStoreLocation } from '../integrations/location.js';
 import { EDWIN_TOOLS } from './tools.js';
 import { generateMorningBriefing } from '../jobs/morning.js';
 
@@ -37,8 +38,9 @@ export class BrainPipeline {
     // 2. Store Jan's message
     this.store.addMessage(conversationId, 'jan', userMessage);
 
-    // 2.5. Detect mood and intent from Jan's message (instant, no Claude call)
+    // 2.5. Detect mood, intent, and location from Jan's message (instant, no Claude call)
     detectAndStoreMood(this.store, userMessage);
+    detectAndStoreLocation(this.store, userMessage);
     const intent = detectIntent(userMessage);
 
     // 3. Build context
@@ -61,6 +63,7 @@ export class BrainPipeline {
       reasoningBrief: ctx.reasoningBrief,
       evaluationContext: ctx.evaluationContext,
       temporalContext: ctx.temporalContext,
+      locationContext: ctx.locationContext,
     });
 
     // 5. Format conversation history for Claude
@@ -110,8 +113,9 @@ export class BrainPipeline {
     // 2. Store Jan's message
     this.store.addMessage(conversationId, 'jan', userMessage);
 
-    // 2.5. Detect mood and intent from Jan's message (instant, no Claude call)
+    // 2.5. Detect mood, intent, and location from Jan's message (instant, no Claude call)
     detectAndStoreMood(this.store, userMessage);
+    detectAndStoreLocation(this.store, userMessage);
     const intent = detectIntent(userMessage);
 
     // 3. Build context
@@ -134,6 +138,7 @@ export class BrainPipeline {
       reasoningBrief: ctx.reasoningBrief,
       evaluationContext: ctx.evaluationContext,
       temporalContext: ctx.temporalContext,
+      locationContext: ctx.locationContext,
     });
 
     // 5. Format conversation history

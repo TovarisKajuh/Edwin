@@ -6,6 +6,7 @@ import { computeSoulDirectives, formatSoulDirectives } from '../soul/soul-filter
 import { buildReasoningBrief, formatReasoningBrief } from './reasoning-context.js';
 import { assessCapacity, formatEvaluationContext } from './thinking/evaluator.js';
 import { buildTemporalContext, formatTemporalContext } from './temporal-context.js';
+import { getCurrentLocation, formatLocationForContext } from '../integrations/location.js';
 
 export interface BrainContext {
   timeOfDay: TimeOfDay;
@@ -17,6 +18,7 @@ export interface BrainContext {
   reasoningBrief: string;
   evaluationContext: string | null;
   temporalContext: string;
+  locationContext: string;
   conversationHistory: { role: string; content: string }[];
 }
 
@@ -67,6 +69,10 @@ export function buildContext(
   const temporal = buildTemporalContext(now);
   const temporalContext = formatTemporalContext(temporal);
 
+  // Build location awareness
+  const location = getCurrentLocation(store);
+  const locationContext = formatLocationForContext(location);
+
   return {
     timeOfDay,
     dayType,
@@ -77,6 +83,7 @@ export function buildContext(
     reasoningBrief,
     evaluationContext,
     temporalContext,
+    locationContext,
     conversationHistory,
   };
 }

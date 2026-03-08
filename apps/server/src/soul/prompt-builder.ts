@@ -16,6 +16,7 @@ export interface PromptContext {
   reasoningBrief?: string | null;
   evaluationContext?: string | null;
   temporalContext?: string | null;
+  locationContext?: string | null;
 }
 
 export function buildSystemPrompt(ctx: PromptContext): string {
@@ -89,6 +90,11 @@ export function buildSystemPrompt(ctx: PromptContext): string {
   // 7.5. Temporal context (day significance, season, week/month position)
   if (ctx.temporalContext) {
     sections.push(ctx.temporalContext);
+  }
+
+  // 7.6. Location context
+  if (ctx.locationContext) {
+    sections.push(ctx.locationContext);
   }
 
   // 8. Reasoning brief (current awareness for multi-step thinking)
