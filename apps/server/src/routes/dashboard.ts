@@ -5,11 +5,19 @@ import { getTimeOfDay } from '../soul/personality.js';
 import { calculatePriorities } from '../brain/thinking/priority-engine.js';
 import { getWeather, formatWeatherForDashboard } from '../integrations/weather.js';
 import { getTodayEvents, formatEventsForDashboard } from '../integrations/calendar.js';
+import { getGoals, calculateProgress } from '../tracking/goals.js';
+import { getHabitStats, type HabitName } from '../tracking/habits.js';
+import { getUpcomingBills } from '../tracking/finances.js';
+import { getNews, scoreRelevance } from '../integrations/news.js';
+import { getConversationCount } from '../memory/relationship.js';
+
+const TRACKED_HABITS: HabitName[] = ['gym', 'sleep', 'supplements', 'diet', 'hydration', 'reading', 'meditation'];
 
 export async function dashboardRoutes(server: FastifyInstance, store: MemoryStore) {
   server.get('/api/dashboard', async () => {
     const now = new Date();
     const hour = now.getHours();
+    const todayStr = now.toISOString().slice(0, 10);
 
     let greeting: string;
     if (hour < 12) greeting = 'Good morning, sir.';
@@ -42,6 +50,61 @@ export async function dashboardRoutes(server: FastifyInstance, store: MemoryStor
       // Weather is nice-to-have
     }
 
+    // Goals
+    const goals = getGoals(store).map((g) => {
+      const progress = calculateProgress(g);
+      return {
+        id: g.id,
+        name: g.name,
+        category: g.category,
+        progress: progress.percentage,
+        onTrack: progress.onTrack,
+      };
+    });
+
+    // Habits
+    const habits = TRACKED_HABITS.map((name) => {
+      try {
+        const stats = getHabitStats(store, name);
+        const doneToday = stats.thisWeek.values.some((v) => v.includes(todayStr));
+        return {
+          name,
+          streak: stats.streak.current,
+          status: doneToday ? 'done' as const : 'pending' as const,
+          goal: stats.goal,
+          completedThisWeek: stats.thisWeek.completed,
+        };
+      } catch {
+        return { name, streak: 0, status: 'pending' as const, goal: null, completedThisWeek: 0 };
+      }
+    });
+
+    // News (from cache, no extra fetch)
+    let recentNews: DashboardData['recentNews'] = [];
+    try {
+      const feed = await getNews();
+      recentNews = feed.items.slice(0, 5).map((item) => ({
+        title: item.title,
+        source: item.source,
+        relevance: scoreRelevance(item),
+        link: item.link,
+      }));
+    } catch {
+      // News is nice-to-have
+    }
+
+    // Bills due in next 7 days
+    const upcomingBills = getUpcomingBills(store, todayStr, 7);
+    const pendingBills = upcomingBills.map((b) => {
+      const dueDate = new Date(b.nextDue + 'T00:00:00Z');
+      const dueIn = Math.max(0, Math.ceil((dueDate.getTime() - now.getTime()) / 86400000));
+      return { name: b.name, amount: b.amount, dueIn };
+    });
+
+    // Quick stats
+    const schedule = formatEventsForDashboard(getTodayEvents(store));
+    const maxStreak = Math.max(0, ...habits.map((h) => h.streak));
+
     const data: DashboardData = {
       greeting,
       date: now.toLocaleDateString('en-GB', {
@@ -51,8 +114,18 @@ export async function dashboardRoutes(server: FastifyInstance, store: MemoryStor
         day: 'numeric',
       }),
       weather,
-      schedule: formatEventsForDashboard(getTodayEvents(store)),
+      schedule,
       pendingActions,
+      goals,
+      habits,
+      recentNews,
+      financeSummary: { pendingBills },
+      quickStats: {
+        conversationsToday: getConversationCount(store),
+        activeGoals: goals.length,
+        upcomingEvents: schedule.length,
+        currentStreak: maxStreak,
+      },
     };
     return data;
   });

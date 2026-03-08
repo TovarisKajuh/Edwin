@@ -48,6 +48,41 @@ export interface DashboardData {
   weather?: WeatherData;
   schedule: ScheduleItem[];
   pendingActions: PendingAction[];
+  goals: DashboardGoal[];
+  habits: DashboardHabit[];
+  recentNews: DashboardNewsItem[];
+  financeSummary: {
+    pendingBills: { name: string; amount: number | null; dueIn: number }[];
+  };
+  quickStats: {
+    conversationsToday: number;
+    activeGoals: number;
+    upcomingEvents: number;
+    currentStreak: number;
+  };
+}
+
+export interface DashboardGoal {
+  id: string;
+  name: string;
+  category: string;
+  progress: number;
+  onTrack: boolean;
+}
+
+export interface DashboardHabit {
+  name: string;
+  streak: number;
+  status: 'done' | 'pending' | 'missed';
+  goal: number | null;
+  completedThisWeek: number;
+}
+
+export interface DashboardNewsItem {
+  title: string;
+  source: string;
+  relevance: number;
+  link: string;
 }
 
 export interface WeatherData {
