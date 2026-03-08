@@ -55,9 +55,9 @@ export const EDWIN_TOOLS: Tool[] = [
   {
     name: 'schedule_reminder',
     description:
-      'Set a reminder for Jan at a specific time. Use when Jan says "remind me" or when you ' +
-      'decide Jan needs a reminder based on context. ' +
-      'Do NOT use this for vague future events — only for specific, actionable reminders.',
+      'Set a reminder for Jan. Supports: absolute time ("at 3pm"), relative time ("in 2 hours"), ' +
+      'event-based ("before the meeting"), and recurring ("every Monday"). ' +
+      'Use when Jan says "remind me" or when you decide a reminder is needed.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -67,7 +67,29 @@ export const EDWIN_TOOLS: Tool[] = [
         },
         trigger_time: {
           type: 'string',
-          description: 'ISO 8601 datetime for when to trigger (e.g., "2026-03-09T14:00:00"). Use Europe/Vienna timezone.',
+          description: 'ISO 8601 datetime for absolute time (e.g., "2026-03-09T14:00:00"). Use Europe/Vienna timezone.',
+        },
+        relative_minutes: {
+          type: 'number',
+          description: 'Minutes from now (e.g., 120 for "in 2 hours"). Use instead of trigger_time for relative reminders.',
+        },
+        event_id: {
+          type: 'number',
+          description: 'Calendar event ID to link this reminder to. Triggers before the event.',
+        },
+        event_offset_minutes: {
+          type: 'number',
+          description: 'Minutes before the linked event to trigger (default 15).',
+        },
+        recurring_pattern: {
+          type: 'string',
+          enum: ['daily', 'weekdays', 'weekly:monday', 'weekly:tuesday', 'weekly:wednesday',
+                 'weekly:thursday', 'weekly:friday', 'weekly:saturday', 'weekly:sunday', 'monthly'],
+          description: 'Recurring pattern. Use for "every Monday", "every day", "weekdays only".',
+        },
+        recurring_time: {
+          type: 'string',
+          description: 'HH:MM time for recurring reminders (default "09:00").',
         },
         stakes_level: {
           type: 'string',
@@ -75,14 +97,42 @@ export const EDWIN_TOOLS: Tool[] = [
           description: 'How important: low = nice to know, medium = should not miss, high = critical.',
         },
       },
-      required: ['description', 'trigger_time'],
+      required: ['description'],
+    },
+  },
+  {
+    name: 'list_reminders',
+    description:
+      'List all active reminders, including recurring ones. Use when Jan asks "what reminders do I have" ' +
+      'or "any upcoming reminders".',
+    input_schema: {
+      type: 'object' as const,
+      properties: {},
+      required: [],
+    },
+  },
+  {
+    name: 'cancel_reminder',
+    description:
+      'Cancel a reminder by description. Use when Jan says "cancel the electrician reminder" or ' +
+      '"never mind about that reminder". Matches by keyword in description. ' +
+      'Also cancels recurring routines if the reminder is recurring.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        search_term: {
+          type: 'string',
+          description: 'Keyword to match against reminder descriptions (e.g., "electrician", "gym").',
+        },
+      },
+      required: ['search_term'],
     },
   },
   {
     name: 'list_pending',
     description:
-      'List all pending reminders and scheduled actions. Use when Jan asks "what do I have coming up" ' +
-      'or "any reminders" or when you need to check what\'s already scheduled.',
+      'List all pending actions (reminders, proposals, notifications). Use when Jan asks "what do I have coming up" ' +
+      'or to check scheduled items broadly.',
     input_schema: {
       type: 'object' as const,
       properties: {

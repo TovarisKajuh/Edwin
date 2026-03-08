@@ -13,6 +13,10 @@ import {
   createEvent, formatEventsForClaude,
 } from '../integrations/calendar.js';
 import { getNews, formatNewsForClaude } from '../integrations/news.js';
+import {
+  createReminder, getActiveReminders, formatRemindersForClaude,
+  cancelReminder,
+} from './concluding/reminders.js';
 import type { Source } from '@edwin/shared';
 
 export interface ToolResult {
@@ -52,7 +56,11 @@ async function executeSingleTool(store: MemoryStore, name: string, input: ToolIn
     case 'recall':
       return handleRecall(store, input);
     case 'schedule_reminder':
-      return handleScheduleReminder(store, input);
+      return handleScheduleReminderEnhanced(store, input);
+    case 'list_reminders':
+      return handleListReminders(store);
+    case 'cancel_reminder':
+      return handleCancelReminder(store, input);
     case 'list_pending':
       return handleListPending(store, input);
     case 'get_current_weather':
@@ -104,19 +112,39 @@ function handleRecall(store: MemoryStore, input: ToolInput): string {
   return formatted.join('\n');
 }
 
-function handleScheduleReminder(store: MemoryStore, input: ToolInput): string {
-  const description = input.description as string;
-  const triggerTime = input.trigger_time as string;
-  const stakesLevel = (input.stakes_level as string) || 'low';
+function handleScheduleReminderEnhanced(store: MemoryStore, input: ToolInput): string {
+  const result = createReminder(store, {
+    description: input.description as string,
+    trigger_time: input.trigger_time as string | undefined,
+    relative_minutes: input.relative_minutes as number | undefined,
+    event_id: input.event_id as number | undefined,
+    event_offset_minutes: input.event_offset_minutes as number | undefined,
+    recurring_pattern: input.recurring_pattern as string | undefined,
+    recurring_time: input.recurring_time as string | undefined,
+    stakes_level: input.stakes_level as string | undefined,
+  });
 
-  // Validate the trigger time is parseable
-  const parsed = new Date(triggerTime);
-  if (isNaN(parsed.getTime())) {
-    throw new Error(`Invalid trigger_time: ${triggerTime}`);
+  const timeStr = new Date(result.triggerTime).toLocaleString('en-GB', { timeZone: 'Europe/Vienna' });
+  const recurring = result.isRecurring ? ' (recurring)' : '';
+  return `Reminder scheduled (ID ${result.id}): "${input.description}" — next: ${timeStr}${recurring}`;
+}
+
+function handleListReminders(store: MemoryStore): string {
+  const reminders = getActiveReminders(store);
+  return formatRemindersForClaude(reminders);
+}
+
+function handleCancelReminder(store: MemoryStore, input: ToolInput): string {
+  const searchTerm = input.search_term as string;
+  const result = cancelReminder(store, searchTerm);
+
+  if (result.cancelled === 0) {
+    return `No reminders found matching "${searchTerm}".`;
   }
 
-  const id = store.addScheduledAction('reminder', description, triggerTime, stakesLevel);
-  return `Reminder scheduled (ID ${id}): "${description}" at ${parsed.toLocaleString('en-GB', { timeZone: 'Europe/Vienna' })}`;
+  const descriptions = result.cancelledDescriptions.join(', ');
+  const recurring = result.routinesCancelled > 0 ? ` (${result.routinesCancelled} recurring pattern(s) also cancelled)` : '';
+  return `Cancelled ${result.cancelled} reminder(s): ${descriptions}${recurring}`;
 }
 
 function handleListPending(store: MemoryStore, input: ToolInput): string {

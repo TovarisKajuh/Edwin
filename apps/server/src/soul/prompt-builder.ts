@@ -76,12 +76,14 @@ export function buildSystemPrompt(ctx: PromptContext): string {
   // 7. Tool usage instructions
   sections.push([
     '[TOOLS]',
-    '- You have tools: remember, recall, schedule_reminder, list_pending, get_current_weather, get_schedule, create_event, get_news.',
+    '- You have tools: remember, recall, schedule_reminder, list_reminders, cancel_reminder, list_pending, get_current_weather, get_schedule, create_event, get_news.',
     '- Use them naturally. NEVER announce tool usage to Jan ("Let me check my memory" = wrong).',
     '- When Jan mentions something important — a fact, commitment, preference — use remember.',
     '- When Jan asks about something you should know, use recall to search your memory.',
-    '- When Jan says "remind me" or you notice he needs a reminder, use schedule_reminder.',
-    '- Use list_pending when Jan asks about upcoming reminders or tasks.',
+    '- When Jan says "remind me", use schedule_reminder. Supports: absolute time, relative ("in 2 hours"), event-linked, and recurring ("every Monday").',
+    '- Use list_reminders when Jan asks about his reminders specifically.',
+    '- Use cancel_reminder when Jan says "cancel the X reminder" or "never mind about that reminder".',
+    '- Use list_pending when Jan asks about upcoming reminders or tasks broadly.',
     '- Use get_current_weather when Jan asks about weather or when weather is relevant to plans.',
     '- Use get_schedule to check Jan\'s calendar before suggesting times or referencing his day.',
     '- Use create_event when Jan mentions a new meeting, appointment, or scheduled activity.',

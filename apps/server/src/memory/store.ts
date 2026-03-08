@@ -68,6 +68,11 @@ export class MemoryStore {
     this.db = db;
   }
 
+  /** Expose raw database for direct queries (used by subsystems like reminders). */
+  raw() {
+    return this.db.raw();
+  }
+
   // ── Identity (Tier 1) ──────────────────────────────────────────────
 
   setIdentity(
@@ -787,6 +792,13 @@ export class MemoryStore {
        ORDER BY start_time ASC
        LIMIT ?`,
     ).all(now, limit) as CalendarEventRow[];
+  }
+
+  /** Get a single calendar event by ID. */
+  getCalendarEventById(id: number): CalendarEventRow | undefined {
+    return this.db.raw().prepare(
+      'SELECT * FROM calendar_events WHERE id = ?',
+    ).get(id) as CalendarEventRow | undefined;
   }
 
   /** Delete a calendar event by ID. */

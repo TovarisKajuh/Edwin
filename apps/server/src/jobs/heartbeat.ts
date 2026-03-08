@@ -18,6 +18,7 @@ import { getTimeOfDay, getDayType } from '../soul/personality.js';
 import { sendPushToAll } from '../push/push-service.js';
 import { scanForFollowUps, formatFollowUps } from './follow-up-engine.js';
 import { getEventsSoon } from '../integrations/calendar.js';
+import { instantiateRecurringReminders } from '../brain/concluding/reminders.js';
 
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 
@@ -40,6 +41,9 @@ export async function runHeartbeat(store: MemoryStore): Promise<HeartbeatResult>
 
   // 1.5. Check for upcoming calendar events (30-min heads-up)
   checkUpcomingEvents(store);
+
+  // 1.6. Instantiate next recurring reminders if any are due
+  instantiateRecurringReminders(store);
 
   // 2. Context-aware outreach evaluation
   const outreachMessage = await evaluateOutreach(store);
