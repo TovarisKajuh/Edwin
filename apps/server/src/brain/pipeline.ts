@@ -5,6 +5,7 @@ import { buildSystemPrompt } from '../soul/prompt-builder.js';
 import { buildContext } from './context.js';
 import { callClaude, streamClaude } from './reasoning.js';
 import { detectAndStoreMood } from './understanding/mood-detector.js';
+import { detectIntent, formatIntent } from './understanding/intent-detector.js';
 
 export interface PipelineResponse {
   message: string;
@@ -33,8 +34,9 @@ export class BrainPipeline {
     // 2. Store Jan's message
     this.store.addMessage(conversationId, 'jan', userMessage);
 
-    // 2.5. Detect mood from Jan's message (instant, no Claude call)
+    // 2.5. Detect mood and intent from Jan's message (instant, no Claude call)
     detectAndStoreMood(this.store, userMessage);
+    const intent = detectIntent(userMessage);
 
     // 3. Build context
     const ctx = buildContext(this.store, conversationId);
@@ -47,6 +49,7 @@ export class BrainPipeline {
       memorySnapshot: ctx.memorySnapshot,
       healthWarnings: ctx.healthWarnings,
       soulDirectives: ctx.soulDirectives,
+      implicitIntent: intent ? formatIntent(intent) : null,
     });
 
     // 5. Format conversation history for Claude
