@@ -14,6 +14,7 @@ export interface PromptContext {
   implicitIntent?: string | null;
   contextSignal?: string | null;
   reasoningBrief?: string | null;
+  evaluationContext?: string | null;
 }
 
 export function buildSystemPrompt(ctx: PromptContext): string {
@@ -86,7 +87,12 @@ export function buildSystemPrompt(ctx: PromptContext): string {
     sections.push(ctx.reasoningBrief);
   }
 
-  // 9. Soul directives (dynamic, memory-aware)
+  // 9. Evaluation context (cost-benefit analysis for proposals)
+  if (ctx.evaluationContext) {
+    sections.push(ctx.evaluationContext);
+  }
+
+  // 10. Soul directives (dynamic, memory-aware)
   if (ctx.soulDirectives) {
     sections.push(ctx.soulDirectives);
   }

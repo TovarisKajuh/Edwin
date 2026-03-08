@@ -58,6 +58,7 @@ export class BrainPipeline {
       implicitIntent: intent ? formatIntent(intent) : null,
       contextSignal,
       reasoningBrief: ctx.reasoningBrief,
+      evaluationContext: ctx.evaluationContext,
     });
 
     // 5. Format conversation history for Claude
@@ -129,6 +130,7 @@ export class BrainPipeline {
       implicitIntent: intent ? formatIntent(intent) : null,
       contextSignal,
       reasoningBrief: ctx.reasoningBrief,
+      evaluationContext: ctx.evaluationContext,
     });
 
     // 5. Format conversation history

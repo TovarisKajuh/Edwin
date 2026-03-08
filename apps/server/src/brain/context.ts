@@ -4,6 +4,7 @@ import { MemoryStore } from '../memory/store.js';
 import { checkHealth, formatHealthWarnings } from './self-awareness.js';
 import { computeSoulDirectives, formatSoulDirectives } from '../soul/soul-filter.js';
 import { buildReasoningBrief, formatReasoningBrief } from './reasoning-context.js';
+import { assessCapacity, formatEvaluationContext } from './thinking/evaluator.js';
 
 export interface BrainContext {
   timeOfDay: TimeOfDay;
@@ -13,6 +14,7 @@ export interface BrainContext {
   healthWarnings: string | null;
   soulDirectives: string;
   reasoningBrief: string;
+  evaluationContext: string | null;
   conversationHistory: { role: string; content: string }[];
 }
 
@@ -55,6 +57,10 @@ export function buildContext(
   const brief = buildReasoningBrief(store, timeOfDay, dayType);
   const reasoningBrief = formatReasoningBrief(brief);
 
+  // Assess Jan's current capacity for proposals
+  const capacity = assessCapacity(store, timeOfDay, dayType);
+  const evaluationContext = formatEvaluationContext(capacity);
+
   return {
     timeOfDay,
     dayType,
@@ -63,6 +69,7 @@ export function buildContext(
     healthWarnings,
     soulDirectives,
     reasoningBrief,
+    evaluationContext,
     conversationHistory,
   };
 }
