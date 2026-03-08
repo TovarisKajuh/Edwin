@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { getAuthHeaders } from '../lib/auth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -24,7 +25,19 @@ export function PushPrompt() {
     if (!('PushManager' in window)) return;
 
     const stored = localStorage.getItem('edwin-push-prompted');
-    if (stored === 'dismissed' || stored === 'subscribed') return;
+    if (stored === 'subscribed') {
+      // Verify subscription is still active
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) return; // Actually subscribed, all good
+      // Subscription lost — re-prompt
+      localStorage.removeItem('edwin-push-prompted');
+    }
+    if (stored === 'dismissed') {
+      // Allow re-prompting after auth fix — check if enough time passed
+      // For now, always re-prompt (user can dismiss again)
+      localStorage.removeItem('edwin-push-prompted');
+    }
 
     if (Notification.permission === 'granted') {
       // Already granted — subscribe silently if not already
@@ -48,7 +61,9 @@ export function PushPrompt() {
   async function subscribeToPush() {
     try {
       // Get VAPID public key from server
-      const keyRes = await fetch(`${API_URL}/api/push/vapid-key`);
+      const keyRes = await fetch(`${API_URL}/api/push/vapid-key`, {
+        headers: { ...getAuthHeaders() },
+      });
       if (!keyRes.ok) return;
       const { publicKey } = await keyRes.json();
 
@@ -62,7 +77,7 @@ export function PushPrompt() {
       const subJson = subscription.toJSON();
       await fetch(`${API_URL}/api/push/subscribe`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({
           endpoint: subJson.endpoint,
           keys: subJson.keys,
