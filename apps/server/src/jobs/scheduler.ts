@@ -3,6 +3,7 @@ import type { BrainPipeline } from '../brain/pipeline.js';
 import type { MemoryStore } from '../memory/store.js';
 import { runMorningBriefing } from './morning.js';
 import { compressDaily, compressWeekly, promoteObservations } from '../memory/compressor.js';
+import { detectAndStorePatterns } from '../brain/understanding/pattern-detector.js';
 
 export function startScheduler(pipeline: BrainPipeline, store: MemoryStore): void {
   // Morning briefing at 05:30
@@ -13,6 +14,19 @@ export function startScheduler(pipeline: BrainPipeline, store: MemoryStore): voi
       console.log('[Scheduler] Morning briefing complete.');
     } catch (error) {
       console.error('[Scheduler] Morning briefing failed:', error);
+    }
+  }, {
+    timezone: 'Europe/Vienna',
+  });
+
+  // Daily pattern detection at 23:30 — analyze the week's observations for patterns
+  cron.schedule('30 23 * * *', async () => {
+    console.log('[Scheduler] Running pattern detection...');
+    try {
+      const count = await detectAndStorePatterns(store, 7);
+      console.log(`[Scheduler] Pattern detection complete. ${count} new pattern(s) found.`);
+    } catch (error) {
+      console.error('[Scheduler] Pattern detection failed:', error);
     }
   }, {
     timezone: 'Europe/Vienna',
@@ -52,5 +66,5 @@ export function startScheduler(pipeline: BrainPipeline, store: MemoryStore): voi
     timezone: 'Europe/Vienna',
   });
 
-  console.log('[Scheduler] Edwin\'s scheduler is active. Morning briefing 05:30, daily compression 23:45, weekly compression Sunday 23:55 (Europe/Vienna).');
+  console.log('[Scheduler] Edwin\'s scheduler is active. Morning 05:30, patterns 23:30, compression 23:45, weekly Sunday 23:55 (Europe/Vienna).');
 }

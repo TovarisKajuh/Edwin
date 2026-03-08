@@ -17,6 +17,7 @@ export interface ReasoningBrief {
   pendingActions: string[];
   recentMood: string | null;
   activeCommitments: string[];
+  knownPatterns: string[];
 }
 
 /**
@@ -59,6 +60,10 @@ export function buildReasoningBrief(
     });
     return `${a.description} (${time}, ${a.stakes_level})`;
   });
+
+  // ── Known patterns ───────────────────────────────────────────────
+  const patternObs = store.getObservationsByCategory('pattern', 10);
+  const knownPatterns = patternObs.map((p) => p.content);
 
   // ── Awareness signals — things Edwin should consider ────────────
   const awareness: string[] = [];
@@ -103,6 +108,7 @@ export function buildReasoningBrief(
     pendingActions,
     recentMood,
     activeCommitments,
+    knownPatterns,
   };
 }
 
@@ -131,6 +137,13 @@ export function formatReasoningBrief(brief: ReasoningBrief): string {
     lines.push('Upcoming reminders:');
     for (const a of brief.pendingActions) {
       lines.push(`  - ${a}`);
+    }
+  }
+
+  if (brief.knownPatterns.length > 0) {
+    lines.push('Behavioural patterns you\'ve noticed:');
+    for (const p of brief.knownPatterns) {
+      lines.push(`  - ${p}`);
     }
   }
 
