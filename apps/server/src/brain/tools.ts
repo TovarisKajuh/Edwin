@@ -309,6 +309,55 @@ export const EDWIN_TOOLS: Tool[] = [
     },
   },
   {
+    name: 'add_person',
+    description:
+      'Add someone to Jan\'s contact circle. Use when Jan mentions someone new — a friend, colleague, ' +
+      'family member — or when Edwin should track a relationship.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        name: { type: 'string', description: 'Person\'s name.' },
+        relationship: {
+          type: 'string',
+          enum: ['friend', 'family', 'colleague', 'business', 'partner', 'acquaintance'],
+          description: 'Relationship type.',
+        },
+        contact_frequency: {
+          type: 'string',
+          enum: ['weekly', 'biweekly', 'monthly', 'quarterly'],
+          description: 'How often Jan should ideally be in touch.',
+        },
+        phone: { type: 'string', description: 'Phone number (optional).' },
+        notes: { type: 'string', description: 'Notes about this person (optional).' },
+      },
+      required: ['name'],
+    },
+  },
+  {
+    name: 'log_contact',
+    description:
+      'Record that Jan had contact with someone. Use when Jan mentions meeting, calling, or ' +
+      'texting someone. Updates last_contact date. Log silently.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        name: { type: 'string', description: 'Name of the person Jan had contact with.' },
+      },
+      required: ['name'],
+    },
+  },
+  {
+    name: 'get_people',
+    description:
+      'Get Jan\'s contact list sorted by contact gap. Use when Jan asks "who haven\'t I seen?" ' +
+      'or "who should I call?" Shows overdue contacts first.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {},
+      required: [],
+    },
+  },
+  {
     name: 'get_news',
     description:
       'Get relevant industry news — solar, renewables, Austrian business, EU energy policy. ' +

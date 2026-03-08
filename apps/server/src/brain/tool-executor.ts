@@ -22,6 +22,10 @@ import {
   logExpense, getSpendingSummary, formatSpendingSummary,
   getAllBills, formatBillsForClaude, type ExpenseCategory,
 } from '../tracking/finances.js';
+import {
+  addPerson, findPerson, getAllPeople, getPeopleByContactGap,
+  recordContact, formatPeopleForClaude, type RelationshipType,
+} from '../tracking/social.js';
 import type { Source } from '@edwin/shared';
 
 export interface ToolResult {
@@ -86,6 +90,12 @@ async function executeSingleTool(store: MemoryStore, name: string, input: ToolIn
       return handleGetSpending(store, input);
     case 'list_bills':
       return handleListBills(store);
+    case 'add_person':
+      return handleAddPerson(store, input);
+    case 'log_contact':
+      return handleLogContact(store, input);
+    case 'get_people':
+      return handleGetPeople(store);
     default:
       throw new Error(`Unknown tool: ${name}`);
   }
@@ -260,4 +270,33 @@ function handleGetSpending(store: MemoryStore, input: ToolInput): string {
 function handleListBills(store: MemoryStore): string {
   const bills = getAllBills(store);
   return formatBillsForClaude(bills);
+}
+
+function handleAddPerson(store: MemoryStore, input: ToolInput): string {
+  const name = input.name as string;
+  const relationship = input.relationship as RelationshipType | undefined;
+  const id = addPerson(store, name, relationship, {
+    contactFrequencyGoal: input.contact_frequency as string | undefined,
+    phone: input.phone as string | undefined,
+    notes: input.notes as string | undefined,
+  });
+  return `Added ${name} (ID ${id}) to your contacts${relationship ? ` as ${relationship}` : ''}.`;
+}
+
+function handleLogContact(store: MemoryStore, input: ToolInput): string {
+  const name = input.name as string;
+  const person = findPerson(store, name);
+  if (!person) {
+    return `No contact found matching "${name}". Use add_person to add them first.`;
+  }
+  recordContact(store, person.id);
+  return `Updated last contact with ${person.name} to today.`;
+}
+
+function handleGetPeople(store: MemoryStore): string {
+  const people = getPeopleByContactGap(store);
+  const all = getAllPeople(store);
+  // Include people without last_contact at the end
+  const noContact = all.filter((p) => p.daysSinceContact === null);
+  return formatPeopleForClaude([...people, ...noContact]);
 }

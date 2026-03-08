@@ -10,6 +10,7 @@ import { getCurrentLocation, formatLocationForContext } from '../integrations/lo
 import { getAutoApprovedCategories, formatStakesGuidance } from './concluding/stakes-engine.js';
 import { formatHabitSummary } from '../tracking/habits.js';
 import { formatFinancialContext } from '../tracking/finances.js';
+import { formatSocialContext } from '../tracking/social.js';
 
 export interface BrainContext {
   timeOfDay: TimeOfDay;
@@ -25,6 +26,7 @@ export interface BrainContext {
   stakesGuidance: string;
   habitSummary: string | null;
   financialContext: string | null;
+  socialContext: string | null;
   conversationHistory: { role: string; content: string }[];
 }
 
@@ -89,6 +91,9 @@ export function buildContext(
   // Build financial context
   const financialCtx = formatFinancialContext(store);
 
+  // Build social context
+  const socialCtx = formatSocialContext(store);
+
   return {
     timeOfDay,
     dayType,
@@ -103,6 +108,7 @@ export function buildContext(
     stakesGuidance,
     habitSummary,
     financialContext: financialCtx,
+    socialContext: socialCtx,
     conversationHistory,
   };
 }

@@ -8,6 +8,7 @@ import { detectAndStoreMood } from './understanding/mood-detector.js';
 import { detectIntent, formatIntent } from './understanding/intent-detector.js';
 import { interpretContext, formatContextInterpretation } from './understanding/context-interpreter.js';
 import { detectAndStoreLocation } from '../integrations/location.js';
+import { detectAndUpdateContacts } from '../tracking/social.js';
 import { EDWIN_TOOLS } from './tools.js';
 import { generateMorningBriefing } from '../jobs/morning.js';
 
@@ -38,9 +39,10 @@ export class BrainPipeline {
     // 2. Store Jan's message
     this.store.addMessage(conversationId, 'jan', userMessage);
 
-    // 2.5. Detect mood, intent, and location from Jan's message (instant, no Claude call)
+    // 2.5. Detect mood, intent, location, and social contact from Jan's message
     detectAndStoreMood(this.store, userMessage);
     detectAndStoreLocation(this.store, userMessage);
+    detectAndUpdateContacts(this.store, userMessage);
     const intent = detectIntent(userMessage);
 
     // 3. Build context
@@ -113,9 +115,10 @@ export class BrainPipeline {
     // 2. Store Jan's message
     this.store.addMessage(conversationId, 'jan', userMessage);
 
-    // 2.5. Detect mood, intent, and location from Jan's message (instant, no Claude call)
+    // 2.5. Detect mood, intent, location, and social contact from Jan's message
     detectAndStoreMood(this.store, userMessage);
     detectAndStoreLocation(this.store, userMessage);
+    detectAndUpdateContacts(this.store, userMessage);
     const intent = detectIntent(userMessage);
 
     // 3. Build context
