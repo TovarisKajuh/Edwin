@@ -144,6 +144,7 @@ export function checkUpcomingEvents(store: MemoryStore): number {
 
 // In-memory set of news links we've already alerted on (avoids duplicate pushes)
 const alertedNewsLinks = new Set<string>();
+const MAX_ALERTED_CACHE = 500;
 
 /**
  * Check for high-relevance news and push alerts.
@@ -157,10 +158,16 @@ export async function checkNewsAlerts(store: MemoryStore): Promise<number> {
 
     for (const item of feed.items) {
       if (alerted >= 3) break;
+      if (!item.link) continue; // skip items without links
       if (alertedNewsLinks.has(item.link)) continue;
 
       const score = scoreRelevance(item);
       if (score >= 0.7) {
+        // Cap set size to prevent unbounded growth
+        if (alertedNewsLinks.size >= MAX_ALERTED_CACHE) {
+          const first = alertedNewsLinks.values().next().value;
+          if (first) alertedNewsLinks.delete(first);
+        }
         alertedNewsLinks.add(item.link);
         await sendPushToAll(store, {
           title: `Edwin — ${item.source}`,

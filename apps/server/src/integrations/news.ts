@@ -121,8 +121,16 @@ export function scoreRelevance(item: { title: string; summary: string | null }):
   let maxScore = 0;
   for (const tier of KEYWORD_TIERS) {
     for (const word of tier.words) {
-      if (text.includes(word)) {
-        maxScore = Math.max(maxScore, tier.weight);
+      // Use word boundary for short keywords to avoid false positives
+      // ("ai" matching "paid", "pv" matching "privacy", "grid" matching "Madrid")
+      if (word.length <= 3) {
+        if (new RegExp(`\\b${word}\\b`).test(text)) {
+          maxScore = Math.max(maxScore, tier.weight);
+        }
+      } else {
+        if (text.includes(word)) {
+          maxScore = Math.max(maxScore, tier.weight);
+        }
       }
     }
   }

@@ -133,6 +133,14 @@ describe('News Integration', () => {
       expect(scoreRelevance(item)).toBe(1.0);
     });
 
+    it('should not false-positive on short keywords inside longer words', () => {
+      // "ai" inside "paid", "pv" inside "preview", "eu" inside "neutral"
+      const paidItem = { title: 'Company paid dividends to shareholders', summary: '' };
+      const previewItem = { title: 'Movie preview released today', summary: '' };
+      expect(scoreRelevance(paidItem)).toBe(0);
+      expect(scoreRelevance(previewItem)).toBe(0);
+    });
+
     it('should score renewable energy news high but below solar', () => {
       const item = { title: 'Battery storage costs decline', summary: 'Grid-scale battery prices fall 20%' };
       const score = scoreRelevance(item);
