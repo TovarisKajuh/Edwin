@@ -73,6 +73,18 @@ export interface PendingAction {
   status: 'pending' | 'proposed' | 'accepted' | 'declined' | 'done';
 }
 
+// Streaming chat events (SSE)
+export interface StreamDeltaEvent {
+  delta: string;
+}
+
+export interface StreamDoneEvent {
+  done: true;
+  conversationId: number;
+}
+
+export type StreamEvent = StreamDeltaEvent | StreamDoneEvent;
+
 export type Source = 'told' | 'observed' | 'inferred' | 'superseded' | 'compressed';
 export type StakesLevel = 'low' | 'medium' | 'high';
 export type Channel = 'chat' | 'voice' | 'notification';

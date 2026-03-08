@@ -37,6 +37,42 @@ export async function callClaude(
   }
 }
 
+/**
+ * Stream Claude's response token-by-token.
+ * Calls onChunk for each text delta, returns the full assembled text.
+ */
+export async function streamClaude(
+  systemPrompt: string,
+  messages: { role: 'user' | 'assistant'; content: string }[],
+  onChunk: (delta: string) => void,
+  options?: ClaudeOptions,
+): Promise<string> {
+  try {
+    const stream = getClient().messages.stream({
+      model: options?.model ?? DEFAULT_MODEL,
+      max_tokens: options?.maxTokens ?? 1024,
+      system: systemPrompt,
+      messages,
+    });
+
+    let fullText = '';
+    for await (const event of stream) {
+      if (
+        event.type === 'content_block_delta' &&
+        event.delta.type === 'text_delta'
+      ) {
+        const delta = event.delta.text;
+        fullText += delta;
+        onChunk(delta);
+      }
+    }
+
+    return fullText || 'I seem to have lost my words, sir. Give me a moment.';
+  } catch {
+    return 'I seem to have lost my words, sir. Give me a moment.';
+  }
+}
+
 /** Haiku call for voice responses only — faster for spoken conversation flow */
 export async function callClaudeVoice(
   systemPrompt: string,

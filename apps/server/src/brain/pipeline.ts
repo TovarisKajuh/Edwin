@@ -3,7 +3,7 @@ import { MemoryStore } from '../memory/store.js';
 import { extractMemories } from '../memory/extractor.js';
 import { buildSystemPrompt } from '../soul/prompt-builder.js';
 import { buildContext } from './context.js';
-import { callClaude } from './reasoning.js';
+import { callClaude, streamClaude } from './reasoning.js';
 
 export interface PipelineResponse {
   message: string;
@@ -66,6 +66,62 @@ export class BrainPipeline {
     });
 
     // 9. Return result
+    return { message: response, conversationId };
+  }
+
+  /**
+   * Process a message with streaming — calls onChunk for each text delta.
+   * Returns the full response + conversationId after stream completes.
+   */
+  async processStreaming(
+    userMessage: string,
+    channel: Channel,
+    onChunk: (delta: string) => void,
+    existingConversationId?: number,
+  ): Promise<PipelineResponse> {
+    // 1. Get or create conversation
+    let conversationId = existingConversationId;
+    if (conversationId === undefined) {
+      const active = this.store.getActiveConversation(channel);
+      conversationId = active?.id ?? this.store.startConversation(channel);
+    }
+
+    // 2. Store Jan's message
+    this.store.addMessage(conversationId, 'jan', userMessage);
+
+    // 3. Build context
+    const ctx = buildContext(this.store, conversationId);
+
+    // 4. Build system prompt
+    const systemPrompt = buildSystemPrompt({
+      timeOfDay: ctx.timeOfDay,
+      dayType: ctx.dayType,
+      recentContext: ctx.recentContext,
+      memorySnapshot: ctx.memorySnapshot,
+      healthWarnings: ctx.healthWarnings,
+    });
+
+    // 5. Format conversation history
+    const messages = ctx.conversationHistory.map((m) => ({
+      role: (m.role === 'jan' ? 'user' : 'assistant') as 'user' | 'assistant',
+      content: m.content,
+    }));
+
+    // 6. Stream Claude's response
+    const response = await streamClaude(systemPrompt, messages, onChunk);
+
+    // 7. Store Edwin's response
+    this.store.addMessage(conversationId, 'edwin', response);
+
+    // 8. Extract memories in background
+    const recentMessages = this.store.getMessages(conversationId).slice(-6);
+    extractMemories(
+      this.store,
+      recentMessages.map((m) => ({ role: m.role as 'jan' | 'edwin', content: m.content })),
+    ).catch((err) => {
+      console.error('[pipeline] Memory extraction failed:', err);
+    });
+
     return { message: response, conversationId };
   }
 

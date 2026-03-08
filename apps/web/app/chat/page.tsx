@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { sendMessage } from '@/lib/api';
+import { streamMessage } from '@/lib/api';
 import { useAudio } from '@/hooks/use-audio';
 import { MessageBubble } from '@/components/chat/message-bubble';
 import { ChatInput } from '@/components/chat/chat-input';
@@ -18,7 +18,7 @@ export default function ChatPage() {
   const [conversationId, setConversationId] = useState<number | undefined>();
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { play, speak } = useAudio();
+  const { speak } = useAudio();
   const nextId = useRef(1);
 
   const scrollToBottom = useCallback(() => {
@@ -44,45 +44,57 @@ export default function ChatPage() {
       setMessages((prev) => [...prev, janMessage]);
       setLoading(true);
 
+      // Create Edwin's message bubble immediately (empty, will fill via streaming)
+      const edwinId = nextId.current++;
+      const edwinTimestamp = new Date().toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+
+      setMessages((prev) => [
+        ...prev,
+        { id: edwinId, role: 'edwin', content: '', timestamp: edwinTimestamp },
+      ]);
+
       try {
-        const response = await sendMessage(text, conversationId);
+        let fullText = '';
+        const result = await streamMessage(
+          text,
+          (delta) => {
+            fullText += delta;
+            // Append each chunk to Edwin's message
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === edwinId ? { ...m, content: m.content + delta } : m,
+              ),
+            );
+          },
+          conversationId,
+        );
 
-        const edwinMessage: ChatMessage = {
-          id: nextId.current++,
-          role: 'edwin',
-          content: response.message,
-          timestamp: new Date().toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-          }),
-        };
+        setConversationId(result.conversationId);
 
-        setMessages((prev) => [...prev, edwinMessage]);
-        setConversationId(response.conversationId);
-
-        if (response.audioUrl) {
-          play(response.audioUrl);
-        } else {
-          speak(response.message);
+        // TTS after stream completes
+        if (fullText) {
+          speak(fullText);
         }
       } catch {
-        const errorMessage: ChatMessage = {
-          id: nextId.current++,
-          role: 'edwin',
-          content:
-            'I seem to be having trouble thinking clearly, sir. Please try again in a moment.',
-          timestamp: new Date().toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-          }),
-        };
-
-        setMessages((prev) => [...prev, errorMessage]);
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === edwinId
+              ? {
+                  ...m,
+                  content:
+                    'I seem to be having trouble thinking clearly, sir. Please try again in a moment.',
+                }
+              : m,
+          ),
+        );
       } finally {
         setLoading(false);
       }
     },
-    [conversationId, play, speak]
+    [conversationId, speak],
   );
 
   return (
@@ -91,7 +103,7 @@ export default function ChatPage() {
       <header className="sticky top-0 z-20 border-b border-zinc-800 bg-zinc-950/80 px-4 py-4 backdrop-blur-sm">
         <h1 className="text-lg font-semibold text-zinc-100">Edwin</h1>
         <p className="text-xs text-zinc-500">
-          {loading ? 'Edwin is thinking...' : 'Online'}
+          {loading ? 'Edwin is typing...' : 'Online'}
         </p>
       </header>
 

@@ -1,4 +1,4 @@
-import type { ChatRequest, ChatResponse, DashboardData, BriefingResponse } from '@edwin/shared';
+import type { ChatRequest, ChatResponse, DashboardData, BriefingResponse, StreamDoneEvent } from '@edwin/shared';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -10,6 +10,59 @@ export async function sendMessage(message: string, conversationId?: number): Pro
   });
   if (!res.ok) throw new Error(`Chat error: ${res.status}`);
   return res.json();
+}
+
+/**
+ * Stream Edwin's response token-by-token via SSE.
+ * Calls onDelta for each text chunk, returns conversationId when done.
+ */
+export async function streamMessage(
+  message: string,
+  onDelta: (delta: string) => void,
+  conversationId?: number,
+): Promise<StreamDoneEvent> {
+  const res = await fetch(`${API_URL}/api/chat/stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, conversationId } satisfies ChatRequest),
+  });
+
+  if (!res.ok) throw new Error(`Stream error: ${res.status}`);
+  if (!res.body) throw new Error('No response body');
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let doneEvent: StreamDoneEvent | null = null;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+
+    // Parse SSE events from buffer
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? ''; // Keep incomplete line in buffer
+
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const json = line.slice(6);
+      try {
+        const event = JSON.parse(json);
+        if (event.done) {
+          doneEvent = event as StreamDoneEvent;
+        } else if (event.delta) {
+          onDelta(event.delta);
+        }
+      } catch {
+        // Skip malformed events
+      }
+    }
+  }
+
+  if (!doneEvent) throw new Error('Stream ended without done event');
+  return doneEvent;
 }
 
 export async function sendVoice(
