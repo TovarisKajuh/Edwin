@@ -179,20 +179,22 @@ export class MemoryStore {
 
   // ── Observation Queries ────────────────────────────────────────────
 
-  /** Get all observations, most recent first. Nothing is ever deleted — old ones get compressed (Session 5). */
+  /** Get all active observations (excludes superseded), most recent first. */
   getActiveObservations(limit: number = 50): ObservationRow[] {
     return this.db.raw().prepare(`
       SELECT * FROM observations
+      WHERE source != 'superseded'
       ORDER BY observed_at DESC, id DESC
       LIMIT ?
     `).all(limit) as ObservationRow[];
   }
 
-  /** Get observations of a specific category, most recent first */
+  /** Get active observations of a specific category (excludes superseded), most recent first */
   getObservationsByCategory(category: string, limit: number = 20): ObservationRow[] {
     return this.db.raw().prepare(`
       SELECT * FROM observations
       WHERE category = ?
+        AND source != 'superseded'
       ORDER BY observed_at DESC, id DESC
       LIMIT ?
     `).all(category, limit) as ObservationRow[];
@@ -207,6 +209,28 @@ export class MemoryStore {
       LIMIT 1
     `).get(category, content);
     return existing !== undefined;
+  }
+
+  /**
+   * Mark an observation as superseded by newer information.
+   * The old observation is NOT deleted — it's marked so it won't appear
+   * in active queries, but the knowledge history is preserved.
+   */
+  supersedeObservation(id: number, supersededBy: string): void {
+    this.db.raw().prepare(`
+      UPDATE observations
+      SET source = 'superseded',
+          confidence = 0,
+          expires_at = ?
+      WHERE id = ?
+    `).run(supersededBy, id);
+  }
+
+  /** Get an observation by ID */
+  getObservation(id: number): ObservationRow | undefined {
+    return this.db.raw().prepare(
+      'SELECT * FROM observations WHERE id = ?'
+    ).get(id) as ObservationRow | undefined;
   }
 
   // ── Memory Snapshot ────────────────────────────────────────────────

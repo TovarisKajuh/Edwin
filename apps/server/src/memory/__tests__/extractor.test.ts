@@ -219,6 +219,110 @@ describe('Memory Extractor', () => {
     expect(facts).toHaveLength(1); // Only one, not two
   });
 
+  it('should supersede old observation when new info contradicts it', async () => {
+    // Pre-populate an observation
+    store.addObservation('fact', 'Jan weighs 83kg', 0.9, 'observed');
+    const oldObs = store.getObservationsByCategory('fact')[0];
+
+    // Claude detects the contradiction and flags superseding
+    mockedCallClaude.mockResolvedValueOnce(JSON.stringify({
+      extractions: [
+        { category: 'fact', content: 'Jan weighs 81kg', confidence: 0.95, supersedes: oldObs.id },
+      ],
+    }));
+
+    const messages = [
+      { role: 'jan' as const, content: 'I weighed myself, I\'m 81kg now.' },
+      { role: 'edwin' as const, content: 'Well done, sir. Progress.' },
+    ];
+
+    await extractMemories(store, messages);
+
+    // New observation stored
+    const activeFacts = store.getObservationsByCategory('fact');
+    expect(activeFacts).toHaveLength(1);
+    expect(activeFacts[0].content).toBe('Jan weighs 81kg');
+
+    // Old observation is superseded (still in DB, but marked)
+    const oldRow = store.getObservation(oldObs.id);
+    expect(oldRow).toBeDefined();
+    expect(oldRow!.source).toBe('superseded');
+    expect(oldRow!.confidence).toBe(0);
+  });
+
+  it('should supersede a commitment when it is fulfilled', async () => {
+    store.addObservation('commitment', 'Jan will go to the gym tomorrow', 0.9, 'observed');
+    const oldCommitment = store.getObservationsByCategory('commitment')[0];
+
+    mockedCallClaude.mockResolvedValueOnce(JSON.stringify({
+      extractions: [
+        { category: 'fact', content: 'Jan went to the gym', confidence: 0.95, supersedes: oldCommitment.id },
+      ],
+    }));
+
+    const messages = [
+      { role: 'jan' as const, content: 'Just got back from the gym.' },
+      { role: 'edwin' as const, content: 'Excellent, sir.' },
+    ];
+
+    await extractMemories(store, messages);
+
+    // Old commitment is superseded
+    const oldRow = store.getObservation(oldCommitment.id);
+    expect(oldRow!.source).toBe('superseded');
+
+    // New fact stored
+    const facts = store.getObservationsByCategory('fact');
+    expect(facts).toHaveLength(1);
+    expect(facts[0].content).toBe('Jan went to the gym');
+
+    // No active commitments remain
+    const commitments = store.getObservationsByCategory('commitment');
+    expect(commitments).toHaveLength(0);
+  });
+
+  it('should include existing observations in the prompt for contradiction detection', async () => {
+    // Pre-populate some observations
+    store.addObservation('fact', 'Jan weighs 83kg', 0.9, 'observed');
+    store.addObservation('commitment', 'Jan will call the electrician', 0.8, 'observed');
+
+    mockedCallClaude.mockResolvedValueOnce(JSON.stringify({ extractions: [] }));
+
+    const messages = [
+      { role: 'jan' as const, content: 'test' },
+      { role: 'edwin' as const, content: 'test' },
+    ];
+
+    await extractMemories(store, messages);
+
+    // Verify existing observations were sent to Claude
+    const [, claudeMessages] = mockedCallClaude.mock.calls[0];
+    const userContent = claudeMessages[0].content;
+    expect(userContent).toContain('EXISTING MEMORIES');
+    expect(userContent).toContain('Jan weighs 83kg');
+    expect(userContent).toContain('Jan will call the electrician');
+  });
+
+  it('should not supersede if the referenced observation does not exist', async () => {
+    mockedCallClaude.mockResolvedValueOnce(JSON.stringify({
+      extractions: [
+        { category: 'fact', content: 'Some new fact', confidence: 0.9, supersedes: 99999 },
+      ],
+    }));
+
+    const messages = [
+      { role: 'jan' as const, content: 'test' },
+      { role: 'edwin' as const, content: 'test' },
+    ];
+
+    await extractMemories(store, messages);
+
+    // New fact should still be stored even if supersede target doesn't exist
+    const facts = store.getObservationsByCategory('fact');
+    expect(facts).toHaveLength(1);
+    expect(facts[0].content).toBe('Some new fact');
+  });
+
   it('should pass conversation messages to Claude in the right format', async () => {
     mockedCallClaude.mockResolvedValueOnce(JSON.stringify({ extractions: [] }));
 

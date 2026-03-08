@@ -83,6 +83,37 @@ describe('MemoryStore', () => {
     expect(commitments.map(o => o.content)).toContain('Call electrician');
   });
 
+  // ── Superseding ────────────────────────────────────────────────
+
+  it('should supersede an observation without deleting it', () => {
+    store.addObservation('fact', 'Jan weighs 83kg', 0.9, 'observed');
+    const obs = store.getObservationsByCategory('fact')[0];
+
+    store.supersedeObservation(obs.id, 'Jan weighs 81kg');
+
+    // Superseded observation is no longer in active queries
+    const active = store.getObservationsByCategory('fact');
+    expect(active).toHaveLength(0);
+
+    // But it still exists in the database (not deleted)
+    const row = store.getObservation(obs.id);
+    expect(row).toBeDefined();
+    expect(row!.source).toBe('superseded');
+    expect(row!.confidence).toBe(0);
+  });
+
+  it('should exclude superseded observations from getActiveObservations', () => {
+    store.addObservation('fact', 'Old fact', 0.9, 'observed');
+    store.addObservation('fact', 'Current fact', 0.9, 'observed');
+    const oldObs = store.getObservationsByCategory('fact').find(o => o.content === 'Old fact')!;
+
+    store.supersedeObservation(oldObs.id, 'Current fact');
+
+    const active = store.getActiveObservations();
+    expect(active).toHaveLength(1);
+    expect(active[0].content).toBe('Current fact');
+  });
+
   // ── Deduplication ───────────────────────────────────────────────
 
   it('should detect existing observations with hasRecentObservation', () => {
