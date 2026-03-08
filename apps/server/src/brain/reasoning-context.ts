@@ -21,6 +21,55 @@ export interface ReasoningBrief {
 }
 
 /**
+ * Match mood text to a behavioral guidance signal.
+ * Ordered by priority — first match wins.
+ */
+const MOOD_SIGNALS: Array<{ keywords: string[]; signal: string }> = [
+  // Negative — high urgency
+  { keywords: ['stress', 'overwhelm', 'panic', 'frantic', 'pressur'],
+    signal: 'Jan is stressed — empathize first, simplify, reduce cognitive load.' },
+  { keywords: ['anxious', 'anxiety', 'nervous', 'worried', 'uneasy'],
+    signal: 'Jan is anxious — reassure, help prioritize, break things into steps.' },
+  { keywords: ['angry', 'furious', 'pissed', 'rage', 'livid'],
+    signal: 'Jan is angry — let him vent, validate, do not dismiss. Address the cause.' },
+  { keywords: ['frustrat', 'annoyed', 'irritat', 'fed up'],
+    signal: 'Jan is frustrated — acknowledge the obstacle, suggest concrete next steps.' },
+  { keywords: ['sad', 'down', 'depress', 'low', 'miserable', 'unhappy'],
+    signal: 'Jan is feeling low — be warm, do not push productivity. Presence over performance.' },
+  { keywords: ['lonely', 'isolat', 'disconnected'],
+    signal: 'Jan is feeling isolated — encourage reaching out to someone. Suggest social activity.' },
+
+  // Negative — low urgency
+  { keywords: ['tired', 'exhaust', 'drained', 'fatigue', 'burnt out', 'burnout', 'wiped'],
+    signal: 'Jan is tired — suggest rest, lower expectations, do not add tasks.' },
+  { keywords: ['bored', 'restless', 'unmotivat', 'apathetic', 'flat'],
+    signal: 'Jan is bored or unmotivated — suggest something engaging, reframe goals, spark curiosity.' },
+  { keywords: ['distract', 'scatter', 'unfocus', 'can\'t concentrate'],
+    signal: 'Jan is distracted — help focus. Suggest one clear next action, not a list.' },
+
+  // Positive
+  { keywords: ['energi', 'excited', 'great', 'pumped', 'fired up', 'motivated', 'amped'],
+    signal: 'Jan is energised — match energy, push harder, suggest ambitious action.' },
+  { keywords: ['happy', 'good', 'positive', 'cheerful', 'upbeat'],
+    signal: 'Jan is in a good mood — maintain momentum, this is a window for harder tasks.' },
+  { keywords: ['calm', 'relaxed', 'peaceful', 'content', 'steady'],
+    signal: 'Jan is calm — good state for planning, reflection, or deeper conversations.' },
+  { keywords: ['confident', 'proud', 'accomplished'],
+    signal: 'Jan is feeling confident — reinforce it, set the next challenge.' },
+  { keywords: ['grateful', 'thankful', 'appreciat'],
+    signal: 'Jan is in a reflective, grateful mood — reinforce positive momentum.' },
+];
+
+function matchMoodSignal(moodLower: string): string | null {
+  for (const { keywords, signal } of MOOD_SIGNALS) {
+    if (keywords.some((kw) => moodLower.includes(kw))) {
+      return signal;
+    }
+  }
+  return null;
+}
+
+/**
  * Build a reasoning brief from all available data.
  * This is NOT a data dump — it's a structured summary that encourages
  * Claude to connect the dots and think before responding.
@@ -85,15 +134,12 @@ export function buildReasoningBrief(
     awareness.push('Late night — encourage rest. Do not push productivity.');
   }
 
-  // Mood-based awareness
+  // Mood-based awareness — maps detected emotions to behavioral guidance
   if (recentMood) {
     const moodLower = recentMood.toLowerCase();
-    if (moodLower.includes('stress') || moodLower.includes('overwhelm')) {
-      awareness.push('Jan is stressed — empathize first, simplify, reduce cognitive load.');
-    } else if (moodLower.includes('tired') || moodLower.includes('exhaust') || moodLower.includes('drained')) {
-      awareness.push('Jan is tired — suggest rest, lower expectations, do not add tasks.');
-    } else if (moodLower.includes('energi') || moodLower.includes('excited') || moodLower.includes('great')) {
-      awareness.push('Jan is energised — match energy, push harder, suggest ambitious action.');
+    const moodSignal = matchMoodSignal(moodLower);
+    if (moodSignal) {
+      awareness.push(moodSignal);
     }
   }
 

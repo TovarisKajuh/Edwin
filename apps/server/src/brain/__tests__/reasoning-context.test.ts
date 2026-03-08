@@ -56,6 +56,57 @@ describe('Reasoning Context', () => {
       const brief = buildReasoningBrief(store, 'evening', 'weekday');
       expect(brief.awareness.some((a) => a.includes('rest'))).toBe(true);
     });
+
+    it('should generate anxiety awareness signal', () => {
+      store.addObservation('emotional_state', 'Jan seems anxious about the presentation', 0.8, 'inferred');
+
+      const brief = buildReasoningBrief(store, 'morning', 'weekday');
+      expect(brief.awareness.some((a) => a.includes('reassure'))).toBe(true);
+    });
+
+    it('should generate frustration awareness signal', () => {
+      store.addObservation('emotional_state', 'Jan is frustrated with the supplier', 0.8, 'observed');
+
+      const brief = buildReasoningBrief(store, 'afternoon', 'weekday');
+      expect(brief.awareness.some((a) => a.includes('next steps'))).toBe(true);
+    });
+
+    it('should generate sadness awareness signal', () => {
+      store.addObservation('emotional_state', 'Jan is feeling down today', 0.7, 'inferred');
+
+      const brief = buildReasoningBrief(store, 'afternoon', 'weekday');
+      expect(brief.awareness.some((a) => a.includes('warm'))).toBe(true);
+    });
+
+    it('should generate boredom awareness signal', () => {
+      store.addObservation('emotional_state', 'Jan seems bored and unmotivated', 0.7, 'inferred');
+
+      const brief = buildReasoningBrief(store, 'afternoon', 'weekday');
+      expect(brief.awareness.some((a) => a.includes('engaging'))).toBe(true);
+    });
+
+    it('should generate calm awareness signal', () => {
+      store.addObservation('emotional_state', 'Jan is relaxed and calm', 0.8, 'observed');
+
+      const brief = buildReasoningBrief(store, 'afternoon', 'weekday');
+      expect(brief.awareness.some((a) => a.includes('planning'))).toBe(true);
+    });
+
+    it('should generate anger awareness signal', () => {
+      store.addObservation('emotional_state', 'Jan is angry about a client cancellation', 0.9, 'observed');
+
+      const brief = buildReasoningBrief(store, 'afternoon', 'weekday');
+      expect(brief.awareness.some((a) => a.includes('vent'))).toBe(true);
+    });
+
+    it('should prioritize stress over tiredness when both present', () => {
+      // "stressed and drained" contains both stress and drained keywords
+      // Stress should win because it's higher priority
+      store.addObservation('emotional_state', 'Jan is stressed and drained', 0.8, 'observed');
+
+      const brief = buildReasoningBrief(store, 'afternoon', 'weekday');
+      expect(brief.awareness.some((a) => a.includes('empathize'))).toBe(true);
+    });
   });
 
   // ── Commitments ────────────────────────────────────────────────

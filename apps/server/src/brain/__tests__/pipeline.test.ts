@@ -78,4 +78,61 @@ describe('BrainPipeline', () => {
     expect(typeof briefing).toBe('string');
     expect(briefing).toBe('Good morning, sir. Let\'s make today count.');
   });
+
+  // ── Integration: verify prompt composition ────────────────────
+
+  it('process() passes reasoning brief and tools in system prompt to Claude', async () => {
+    // Seed data that should appear in the system prompt
+    store.addObservation('emotional_state', 'Jan is stressed about a deadline', 0.8, 'inferred');
+    store.addObservation('commitment', 'Call electrician Friday', 1.0, 'told');
+    store.addObservation('pattern', 'Jan skips gym on Wednesdays', 0.8, 'inferred');
+
+    const { callClaudeWithTools: mockCallClaude } = await import('../reasoning');
+
+    await pipeline.process('How is my day looking?', 'chat');
+
+    // Verify callClaudeWithTools was called and inspect the system prompt
+    expect(mockCallClaude).toHaveBeenCalledOnce();
+    const systemPrompt = vi.mocked(mockCallClaude).mock.calls[0][0] as string;
+
+    // System prompt should contain reasoning brief sections
+    expect(systemPrompt).toContain('[YOUR CURRENT AWARENESS]');
+    expect(systemPrompt).toContain('stressed');
+    expect(systemPrompt).toContain('Call electrician');
+    expect(systemPrompt).toContain('gym');
+
+    // System prompt should contain tool instructions
+    expect(systemPrompt).toContain('[TOOLS]');
+    expect(systemPrompt).toContain('remember');
+    expect(systemPrompt).toContain('recall');
+
+    // System prompt should contain soul/identity
+    expect(systemPrompt).toContain('Edwin');
+    expect(systemPrompt).toContain('sir');
+
+    // System prompt should contain speech rules
+    expect(systemPrompt).toContain('[SPEECH RULES]');
+    expect(systemPrompt).toContain('asterisk');
+  });
+
+  it('process() passes conversation history as Claude messages', async () => {
+    const { callClaudeWithTools: mockCallClaude } = await import('../reasoning');
+
+    // First message
+    await pipeline.process('Hello Edwin', 'chat');
+
+    // Second message in same conversation
+    await pipeline.process('What do I have today?', 'chat');
+
+    // Second call should include conversation history
+    const secondCallMessages = vi.mocked(mockCallClaude).mock.calls[1][1] as Array<{ role: string; content: string }>;
+
+    // Should have 3 messages: user1, assistant1, user2
+    expect(secondCallMessages).toHaveLength(3);
+    expect(secondCallMessages[0].role).toBe('user');
+    expect(secondCallMessages[0].content).toBe('Hello Edwin');
+    expect(secondCallMessages[1].role).toBe('assistant');
+    expect(secondCallMessages[2].role).toBe('user');
+    expect(secondCallMessages[2].content).toBe('What do I have today?');
+  });
 });

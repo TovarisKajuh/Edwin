@@ -91,6 +91,43 @@ export async function detectPatterns(
   return parsePatternResponse(response, existingDescriptions);
 }
 
+/** Stop words to ignore when comparing pattern similarity. */
+const STOP_WORDS = new Set([
+  'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+  'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
+  'should', 'may', 'might', 'shall', 'can', 'to', 'of', 'in', 'for',
+  'on', 'with', 'at', 'by', 'from', 'as', 'into', 'about', 'than',
+  'that', 'this', 'it', 'and', 'or', 'but', 'not', 'no', 'so', 'if',
+  'he', 'his', 'him', 'jan', 'tends', 'seems', 'appears',
+]);
+
+/** Strip basic English suffixes to normalize words for comparison. */
+function stem(word: string): string {
+  if (word.length > 4 && word.endsWith('ing')) return word.slice(0, -3);
+  if (word.length > 3 && word.endsWith('ed')) return word.slice(0, -2);
+  if (word.length > 3 && word.endsWith('s') && !word.endsWith('ss')) return word.slice(0, -1);
+  return word;
+}
+
+/**
+ * Jaccard similarity on stemmed significant words.
+ * Returns 0..1 — higher means more similar.
+ * Threshold of 0.4 catches rephrases while allowing genuinely different patterns.
+ */
+function wordSimilarity(a: string, b: string): number {
+  const extract = (s: string) => new Set(
+    s.split(/\W+/).map(stem).filter((w) => w.length > 1 && !STOP_WORDS.has(w)),
+  );
+  const wordsA = extract(a);
+  const wordsB = extract(b);
+  if (wordsA.size === 0 || wordsB.size === 0) return 0;
+  let intersection = 0;
+  for (const w of wordsA) {
+    if (wordsB.has(w)) intersection++;
+  }
+  return intersection / (wordsA.size + wordsB.size - intersection);
+}
+
 /**
  * Parse Claude's pattern response into structured DetectedPattern objects.
  */
@@ -114,9 +151,9 @@ function parsePatternResponse(response: string, existingDescriptions: string[]):
     if (isNaN(confidence) || confidence < 0.5) continue;
     if (!description || description.length < 10) continue;
 
-    // Skip if too similar to existing pattern
+    // Skip if too similar to existing pattern (word-overlap similarity)
     const descLower = description.toLowerCase();
-    if (existingDescriptions.some((e) => e.includes(descLower) || descLower.includes(e))) continue;
+    if (existingDescriptions.some((e) => wordSimilarity(e, descLower) >= 0.4)) continue;
 
     patterns.push({ type, description, confidence });
   }

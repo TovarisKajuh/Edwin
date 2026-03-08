@@ -134,8 +134,7 @@ describe('Pattern Detector', () => {
 
   // ── Deduplication ──────────────────────────────────────────────
 
-  it('should skip patterns similar to existing ones', async () => {
-    // Add an existing pattern
+  it('should skip patterns with exact same wording', async () => {
     store.addObservation('pattern', 'Jan tends to skip the gym on Wednesdays', 0.8, 'inferred');
 
     for (let i = 0; i < 6; i++) {
@@ -150,6 +149,42 @@ describe('Pattern Detector', () => {
     const patterns = await detectPatterns(store, 7);
     expect(patterns).toHaveLength(1);
     expect(patterns[0].description).toContain('sleeping');
+  });
+
+  it('should skip patterns semantically similar to existing ones (word overlap)', async () => {
+    // Existing: "Jan skips gym on Wednesdays"
+    store.addObservation('pattern', 'Jan skips gym on Wednesdays', 0.8, 'inferred');
+
+    for (let i = 0; i < 6; i++) {
+      store.addObservation('fact', `Observation ${i}`, 0.8, 'observed');
+    }
+
+    vi.mocked(callClaude).mockResolvedValue(
+      // Same meaning, slightly different wording — should be caught
+      'temporal|0.8|Jan avoids gym on Wednesday evenings\n' +
+      // Completely different — should pass
+      'trend|0.7|Jan orders food delivery more when stressed',
+    );
+
+    const patterns = await detectPatterns(store, 7);
+    expect(patterns).toHaveLength(1);
+    expect(patterns[0].description).toContain('food delivery');
+  });
+
+  it('should allow patterns that are genuinely different despite sharing a word', async () => {
+    store.addObservation('pattern', 'Jan skips gym on Wednesdays', 0.8, 'inferred');
+
+    for (let i = 0; i < 6; i++) {
+      store.addObservation('fact', `Observation ${i}`, 0.8, 'observed');
+    }
+
+    vi.mocked(callClaude).mockResolvedValue(
+      // Shares "gym" but is a completely different pattern
+      'trend|0.8|Jan goes to the gym more frequently on weekends',
+    );
+
+    const patterns = await detectPatterns(store, 7);
+    expect(patterns).toHaveLength(1);
   });
 
   // ── Store integration ──────────────────────────────────────────
