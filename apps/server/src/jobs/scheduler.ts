@@ -1,56 +1,100 @@
+/**
+ * Edwin's Daily Rhythm — Session 18.
+ *
+ * Edwin is not a monitoring system. He's a butler with a natural daily cycle.
+ * He sleeps at night, prepares in the morning, checks in during the day,
+ * and winds down in the evening.
+ *
+ * Jan's schedule:
+ *   Wake: 05:30 | Lights out: 20:00 | Asleep: 21:30
+ *
+ * Edwin's schedule (Europe/Vienna):
+ *   SLEEP    21:30–05:00  — Nothing. Zero processes.
+ *   PRE-WAKE 05:00        — Gather weather, calendar, pending items, prepare briefing
+ *   MORNING  05:30        — Deliver morning briefing
+ *   DAY      07,09,11,13,15,17,19 — Heartbeat every 2 hours (7 ticks)
+ *   EVENING  19:30        — Wind-down heartbeat (before lights out at 20:00)
+ *   NIGHT    21:00        — Pattern detection + daily compression (before sleep)
+ *   SUNDAY   21:15        — Weekly compression
+ */
+
 import cron from 'node-cron';
 import type { BrainPipeline } from '../brain/pipeline.js';
 import type { MemoryStore } from '../memory/store.js';
 import { runMorningBriefing } from './morning.js';
 import { compressDaily, compressWeekly, promoteObservations } from '../memory/compressor.js';
 import { detectAndStorePatterns } from '../brain/understanding/pattern-detector.js';
+import { runHeartbeat, checkDueReminders } from './heartbeat.js';
+
+const TZ = 'Europe/Vienna';
 
 export function startScheduler(pipeline: BrainPipeline, store: MemoryStore): void {
-  // Morning briefing at 05:30
+  // ── PRE-WAKE: 05:00 — Prepare morning context ───────────────
+  cron.schedule('0 5 * * *', async () => {
+    console.log('[Edwin] Pre-wake: gathering morning context...');
+    try {
+      const triggered = checkDueReminders(store);
+      if (triggered > 0) {
+        console.log(`[Edwin] Pre-wake: ${triggered} overnight reminder(s) processed.`);
+      }
+    } catch (error) {
+      console.error('[Edwin] Pre-wake failed:', error);
+    }
+  }, { timezone: TZ });
+
+  // ── MORNING: 05:30 — Morning briefing ───────────────────────
   cron.schedule('30 5 * * *', async () => {
-    console.log('[Scheduler] Running morning briefing...');
+    console.log('[Edwin] Good morning. Preparing briefing...');
     try {
       await runMorningBriefing(pipeline);
-      console.log('[Scheduler] Morning briefing complete.');
+      console.log('[Edwin] Morning briefing delivered.');
     } catch (error) {
-      console.error('[Scheduler] Morning briefing failed:', error);
+      console.error('[Edwin] Morning briefing failed:', error);
     }
-  }, {
-    timezone: 'Europe/Vienna',
-  });
+  }, { timezone: TZ });
 
-  // Daily pattern detection at 23:30 — analyze the week's observations for patterns
-  cron.schedule('30 23 * * *', async () => {
-    console.log('[Scheduler] Running pattern detection...');
+  // ── DAY: Heartbeat every 2 hours (07, 09, 11, 13, 15, 17, 19) ──
+  cron.schedule('0 7,9,11,13,15,17,19 * * *', async () => {
+    try {
+      const result = await runHeartbeat(store);
+      if (result.remindersTriggered > 0 || result.outreachMessage) {
+        console.log(
+          `[Edwin] Heartbeat: ${result.remindersTriggered} reminder(s), ` +
+          `outreach: ${result.outreachMessage ? '"' + result.outreachMessage.slice(0, 50) + '..."' : 'silent'}`,
+        );
+      }
+    } catch (error) {
+      console.error('[Edwin] Heartbeat failed:', error);
+    }
+  }, { timezone: TZ });
+
+  // ── EVENING: 19:30 — Wind-down heartbeat (before lights out) ──
+  cron.schedule('30 19 * * *', async () => {
+    console.log('[Edwin] Evening wind-down...');
+    try {
+      await runHeartbeat(store);
+    } catch (error) {
+      console.error('[Edwin] Evening heartbeat failed:', error);
+    }
+  }, { timezone: TZ });
+
+  // ── NIGHT: 21:00 — Pattern detection + daily compression ────
+  cron.schedule('0 21 * * *', async () => {
     try {
       const count = await detectAndStorePatterns(store, 7);
-      console.log(`[Scheduler] Pattern detection complete. ${count} new pattern(s) found.`);
-    } catch (error) {
-      console.error('[Scheduler] Pattern detection failed:', error);
-    }
-  }, {
-    timezone: 'Europe/Vienna',
-  });
+      console.log(`[Edwin] Pattern detection: ${count} new pattern(s).`);
 
-  // Daily compression at 23:45 — compress today's observations into a summary
-  cron.schedule('45 23 * * *', async () => {
-    console.log('[Scheduler] Running daily compression...');
-    try {
       await compressDaily(store);
       promoteObservations(store);
-      console.log('[Scheduler] Daily compression complete.');
+      console.log('[Edwin] Daily compression complete.');
     } catch (error) {
-      console.error('[Scheduler] Daily compression failed:', error);
+      console.error('[Edwin] Night processing failed:', error);
     }
-  }, {
-    timezone: 'Europe/Vienna',
-  });
+  }, { timezone: TZ });
 
-  // Weekly compression on Sunday at 23:55 — compress week's summaries
-  cron.schedule('55 23 * * 0', async () => {
-    console.log('[Scheduler] Running weekly compression...');
+  // ── SUNDAY: 21:15 — Weekly compression ──────────────────────
+  cron.schedule('15 21 * * 0', async () => {
     try {
-      // Calculate the Monday of this week
       const now = new Date();
       const dayOfWeek = now.getDay();
       const monday = new Date(now);
@@ -58,13 +102,17 @@ export function startScheduler(pipeline: BrainPipeline, store: MemoryStore): voi
       const weekStart = monday.toISOString().slice(0, 10);
 
       await compressWeekly(store, weekStart);
-      console.log('[Scheduler] Weekly compression complete.');
+      console.log('[Edwin] Weekly compression complete.');
     } catch (error) {
-      console.error('[Scheduler] Weekly compression failed:', error);
+      console.error('[Edwin] Weekly compression failed:', error);
     }
-  }, {
-    timezone: 'Europe/Vienna',
-  });
+  }, { timezone: TZ });
 
-  console.log('[Scheduler] Edwin\'s scheduler is active. Morning 05:30, patterns 23:30, compression 23:45, weekly Sunday 23:55 (Europe/Vienna).');
+  // ── Summary ─────────────────────────────────────────────────
+  console.log([
+    '[Edwin] Daily rhythm active (Europe/Vienna):',
+    '  05:00 pre-wake | 05:30 briefing | 07-19 heartbeat (2h) | 19:30 wind-down',
+    '  21:00 patterns + compress | Sun 21:15 weekly',
+    '  21:30-05:00 sleep (zero processes)',
+  ].join('\n'));
 }
