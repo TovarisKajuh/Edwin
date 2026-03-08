@@ -13,6 +13,7 @@ import { MemoryStore } from '../memory/store.js';
 import { generatePredictions, formatPredictions } from './understanding/predictor.js';
 import { getTopPriorities, formatPriorities } from './thinking/priority-engine.js';
 import { getGoalMotivation } from '../tracking/goals.js';
+import { detectConflicts, getConflictSummary } from './thinking/conflict-resolver.js';
 
 export interface ReasoningBrief {
   temporal: string;
@@ -157,6 +158,13 @@ export function buildReasoningBrief(
   const goalMotivation = getGoalMotivation(store);
   if (goalMotivation) {
     awareness.push(goalMotivation);
+  }
+
+  // Conflict detection
+  const conflicts = detectConflicts(store, timeOfDay, dayType);
+  const conflictSummary = getConflictSummary(conflicts);
+  if (conflictSummary) {
+    awareness.push(conflictSummary);
   }
 
   // ── Behavioral predictions ─────────────────────────────────────
