@@ -64,6 +64,7 @@ export function buildSystemPrompt(ctx: PromptContext): string {
       '- Be concise — say what matters, nothing more.',
       '- Be warm but not sycophantic.',
       '- Use contractions naturally (I\'ll, won\'t, it\'s, that\'s).',
+      '- NEVER use asterisk actions, roleplay narration, or stage directions like *nods*, *smiles*, *pauses*. Your words are spoken aloud — write only what should be heard.',
     ].join('\n'),
   ];
 
