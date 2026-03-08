@@ -23,6 +23,7 @@ import { textToSpeech } from '../voice/speak.js';
 import { sendPushToAll } from '../push/push-service.js';
 import { getWeather, formatWeatherForClaude } from '../integrations/weather.js';
 import { getTodayEvents, formatEventsForBriefing } from '../integrations/calendar.js';
+import { getNews, formatNewsForBriefing } from '../integrations/news.js';
 
 export interface BriefingContext {
   dayName: string;
@@ -36,6 +37,7 @@ export interface BriefingContext {
   recentMood: string | null;
   weather: string | null;
   todayEvents: string[];
+  newsItems: string[];
 }
 
 /**
@@ -110,6 +112,15 @@ export async function buildBriefingContext(store: MemoryStore): Promise<Briefing
   const todayCalEvents = getTodayEvents(store);
   const todayEvents = formatEventsForBriefing(todayCalEvents);
 
+  // ── Industry News ─────────────────────────────────────────────────
+  let newsItems: string[] = [];
+  try {
+    const feed = await getNews();
+    newsItems = formatNewsForBriefing(feed);
+  } catch {
+    // News is nice-to-have
+  }
+
   return {
     dayName,
     dateStr,
@@ -122,6 +133,7 @@ export async function buildBriefingContext(store: MemoryStore): Promise<Briefing
     recentMood: moodText,
     weather,
     todayEvents,
+    newsItems,
   };
 }
 
@@ -192,6 +204,15 @@ export function formatBriefingPrompt(ctx: BriefingContext): string {
     sections.push('');
     sections.push('WEATHER:');
     sections.push(`  ${ctx.weather}`);
+  }
+
+  // Industry news
+  if (ctx.newsItems.length > 0) {
+    sections.push('');
+    sections.push('INDUSTRY NEWS (mention only if genuinely relevant):');
+    for (const n of ctx.newsItems) {
+      sections.push(`  - ${n}`);
+    }
   }
 
   // Mood

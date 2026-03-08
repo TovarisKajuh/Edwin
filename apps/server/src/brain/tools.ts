@@ -157,4 +157,16 @@ export const EDWIN_TOOLS: Tool[] = [
       required: ['title', 'start_time'],
     },
   },
+  {
+    name: 'get_news',
+    description:
+      'Get relevant industry news — solar, renewables, Austrian business, EU energy policy. ' +
+      'Use when Jan asks about industry news, when discussing business strategy, or to add ' +
+      'real-world context to business conversations. Max 3 curated items.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {},
+      required: [],
+    },
+  },
 ];

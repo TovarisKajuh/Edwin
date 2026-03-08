@@ -20,6 +20,11 @@ vi.mock('../../integrations/calendar', () => ({
   formatEventsForBriefing: vi.fn().mockReturnValue([]),
 }));
 
+vi.mock('../../integrations/news', () => ({
+  getNews: vi.fn().mockRejectedValue(new Error('no news in tests')),
+  formatNewsForBriefing: vi.fn().mockReturnValue([]),
+}));
+
 vi.mock('../../push/push-service', () => ({
   sendPushToAll: vi.fn(() => Promise.resolve(0)),
 }));
@@ -29,6 +34,7 @@ import { callClaude } from '../../brain/reasoning';
 import { textToSpeech } from '../../voice/speak';
 import { getWeather, formatWeatherForClaude } from '../../integrations/weather';
 import { getTodayEvents, formatEventsForBriefing } from '../../integrations/calendar';
+import { getNews, formatNewsForBriefing } from '../../integrations/news';
 
 let store: MemoryStore;
 
@@ -38,6 +44,8 @@ beforeEach(() => {
   vi.mocked(getWeather).mockRejectedValue(new Error('no weather in tests'));
   vi.mocked(getTodayEvents).mockReturnValue([]);
   vi.mocked(formatEventsForBriefing).mockReturnValue([]);
+  vi.mocked(getNews).mockRejectedValue(new Error('no news in tests'));
+  vi.mocked(formatNewsForBriefing).mockReturnValue([]);
   const db = new Database(':memory:');
   store = new MemoryStore(db);
 });
@@ -60,6 +68,7 @@ describe('Morning Briefing', () => {
       expect(ctx.recentMood).toBeNull();
       expect(ctx.weather).toBeNull(); // weather API mocked to fail
       expect(ctx.todayEvents).toEqual([]);
+      expect(ctx.newsItems).toEqual([]);
     });
 
     it('should pull pending commitments', async () => {
@@ -232,6 +241,7 @@ describe('Morning Briefing', () => {
         recentMood: null,
         weather: 'Graz, Austria — Partly cloudy, 14°C',
         todayEvents: [],
+        newsItems: [],
       };
       const prompt = formatBriefingPrompt(ctx);
 

@@ -16,8 +16,14 @@ vi.mock('../../integrations/calendar', () => ({
   formatEventsForClaude: vi.fn(),
 }));
 
+vi.mock('../../integrations/news', () => ({
+  getNews: vi.fn(),
+  formatNewsForClaude: vi.fn(),
+}));
+
 import { getWeather, formatWeatherForClaude } from '../../integrations/weather';
 import { getTodayEvents, getWeekEvents, getUpcomingEvents, createEvent, formatEventsForClaude as formatCalendarForClaude } from '../../integrations/calendar';
+import { getNews, formatNewsForClaude as formatNewsClaude } from '../../integrations/news';
 
 let store: MemoryStore;
 
@@ -348,6 +354,41 @@ describe('Tool Executor', () => {
 
       expect(results[0].is_error).toBe(true);
       expect(results[0].content).toContain('Invalid start_time');
+    });
+  });
+
+  // ── News Tool ──────────────────────────────────────────────────
+
+  describe('get_news', () => {
+    it('should return formatted news', async () => {
+      const mockFeed = {
+        items: [{ title: 'Solar tariffs rise', source: 'PV Mag', link: '', publishedAt: '', summary: null }],
+        fetchedAt: new Date().toISOString(),
+      };
+      vi.mocked(getNews).mockResolvedValue(mockFeed);
+      vi.mocked(formatNewsClaude).mockReturnValue('Relevant news: Solar tariffs rise');
+
+      const results = await executeTools(store, [{
+        id: 'tool_1',
+        name: 'get_news',
+        input: {},
+      }]);
+
+      expect(results[0].content).toContain('Solar tariffs rise');
+      expect(getNews).toHaveBeenCalledOnce();
+    });
+
+    it('should handle news API errors gracefully', async () => {
+      vi.mocked(getNews).mockRejectedValue(new Error('RSS feed unavailable'));
+
+      const results = await executeTools(store, [{
+        id: 'tool_1',
+        name: 'get_news',
+        input: {},
+      }]);
+
+      expect(results[0].is_error).toBe(true);
+      expect(results[0].content).toContain('RSS feed unavailable');
     });
   });
 

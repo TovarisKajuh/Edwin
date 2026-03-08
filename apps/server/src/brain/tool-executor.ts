@@ -12,6 +12,7 @@ import {
   getTodayEvents, getWeekEvents, getUpcomingEvents,
   createEvent, formatEventsForClaude,
 } from '../integrations/calendar.js';
+import { getNews, formatNewsForClaude } from '../integrations/news.js';
 import type { Source } from '@edwin/shared';
 
 export interface ToolResult {
@@ -60,6 +61,8 @@ async function executeSingleTool(store: MemoryStore, name: string, input: ToolIn
       return handleGetSchedule(store, input);
     case 'create_event':
       return handleCreateEvent(store, input);
+    case 'get_news':
+      return handleGetNews();
     default:
       throw new Error(`Unknown tool: ${name}`);
   }
@@ -174,4 +177,9 @@ function handleCreateEvent(store: MemoryStore, input: ToolInput): string {
   const event = createEvent(store, title, startTime, endTime, { description, location });
   const timeStr = parsed.toLocaleString('en-GB', { timeZone: 'Europe/Vienna' });
   return `Event created (ID ${event.id}): "${title}" at ${timeStr}`;
+}
+
+async function handleGetNews(): Promise<string> {
+  const feed = await getNews();
+  return formatNewsForClaude(feed);
 }
