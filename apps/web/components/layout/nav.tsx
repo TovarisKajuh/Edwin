@@ -17,7 +17,6 @@ const navItems: NavItem[] = [
   { href: '/', label: 'Dashboard', icon: '\u25C9' },
   { href: '/chat', label: 'Chat', icon: '\u25C6' },
   { href: '/voice', label: 'Voice', icon: '\u25CF' },
-  { href: '/news', label: 'News', icon: '\u25A0' },
 ];
 
 export function BottomNav() {

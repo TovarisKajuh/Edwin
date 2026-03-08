@@ -8,7 +8,7 @@ import { StatCard } from '@/components/dashboard/stat-card';
 import { ScheduleTimeline } from '@/components/dashboard/schedule-timeline';
 import { GoalsRow } from '@/components/dashboard/goals-row';
 import { ActionsPanel } from '@/components/dashboard/actions-panel';
-import { NewsTicker } from '@/components/dashboard/news-ticker';
+
 import { BillsPanel } from '@/components/dashboard/bills-panel';
 import { HabitsGrid } from '@/components/dashboard/habits-grid';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
@@ -95,7 +95,7 @@ export default function DashboardPage() {
         </section>
       )}
 
-      {/* Row 3: Schedule + Actions | News */}
+      {/* Row 3: Schedule + Actions | Bills + Habits */}
       <div className="mb-6 grid gap-6 lg:grid-cols-2">
         {/* Left: Schedule + Actions stacked */}
         <div className="space-y-6">
@@ -114,15 +114,8 @@ export default function DashboardPage() {
           </section>
         </div>
 
-        {/* Right: News + Bills + Habits stacked */}
+        {/* Right: Bills + Habits stacked */}
         <div className="space-y-6">
-          <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-            <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-zinc-400">
-              News
-            </h2>
-            <NewsTicker items={data.recentNews} />
-          </section>
-
           <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
             <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-zinc-400">
               Upcoming Bills
