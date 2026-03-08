@@ -123,7 +123,7 @@ export async function getWeather(): Promise<WeatherReport> {
     throw new Error(`Weather API error: ${response.status}`);
   }
 
-  const data: OpenMeteoResponse = await response.json();
+  const data = (await response.json()) as OpenMeteoResponse;
 
   const report: WeatherReport = {
     current: {

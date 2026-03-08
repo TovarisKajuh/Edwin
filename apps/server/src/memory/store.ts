@@ -69,7 +69,7 @@ export class MemoryStore {
   }
 
   /** Expose raw database for direct queries (used by subsystems like reminders). */
-  raw() {
+  raw(): import('better-sqlite3').Database {
     return this.db.raw();
   }
 
