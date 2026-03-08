@@ -12,7 +12,9 @@ export function CallScreen() {
   const [lastTranscript, setLastTranscript] = useState('');
   const [lastResponse, setLastResponse] = useState('');
   const conversationIdRef = useRef<number | undefined>(undefined);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Persistent audio element — created on user gesture to unlock iOS audio playback
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
+  const blobUrlRef = useRef<string | null>(null);
 
   const processAudio = useCallback(async (blob: Blob) => {
     if (blob.size < 1000) {
@@ -28,21 +30,25 @@ export function CallScreen() {
       setLastTranscript(result.transcript);
       setLastResponse(result.message);
 
-      if (result.audio.byteLength > 1000) {
+      if (result.audio.byteLength > 1000 && audioElRef.current) {
+        // Clean up previous blob URL
+        if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+
         const audioBlob = new Blob([result.audio], { type: 'audio/mpeg' });
         const url = URL.createObjectURL(audioBlob);
-        const audioEl = new Audio(url);
-        audioRef.current = audioEl;
-        setCallState('speaking');
+        blobUrlRef.current = url;
 
+        const audioEl = audioElRef.current;
         audioEl.onended = () => {
-          URL.revokeObjectURL(url);
           setCallState('idle');
         };
         audioEl.onerror = () => {
-          URL.revokeObjectURL(url);
           setCallState('idle');
         };
+
+        // Reuse the unlocked audio element — just change src
+        audioEl.src = url;
+        setCallState('speaking');
         await audioEl.play();
       } else {
         setCallState('idle');
@@ -74,6 +80,16 @@ export function CallScreen() {
   }, [recording, startRecording, stopRecording]);
 
   const handleStartCall = useCallback(() => {
+    // Create and unlock audio element during this user gesture (required for iOS)
+    if (!audioElRef.current) {
+      const el = new Audio();
+      (el as unknown as Record<string, boolean>).playsInline = true;
+      audioElRef.current = el;
+    }
+    // Play silent audio to unlock — iOS requires .play() from a user gesture
+    audioElRef.current.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYoRwMHAAAAAAD/+1DEAAAHAAL0AAAAIgAAXoAAAARMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7UMQbAAADSAAAAAAAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV';
+    audioElRef.current.play().catch(() => {}); // Ignore errors on silent play
+
     setInCall(true);
     setCallState('idle');
     setLastTranscript('');
@@ -83,9 +99,13 @@ export function CallScreen() {
 
   const handleEndCall = useCallback(() => {
     if (recording) stopRecording();
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
+    if (audioElRef.current) {
+      audioElRef.current.pause();
+      audioElRef.current.src = '';
+    }
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
     }
     setInCall(false);
     setCallState('idle');
