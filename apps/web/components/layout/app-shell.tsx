@@ -1,6 +1,7 @@
 'use client';
 
 import { Sidebar, BottomNav } from './nav';
+import { PushPrompt } from '../push-prompt';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
@@ -10,6 +11,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
       <BottomNav />
+      <PushPrompt />
     </div>
   );
 }

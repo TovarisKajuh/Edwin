@@ -634,6 +634,31 @@ export class MemoryStore {
     return result.changes > 0;
   }
 
+  // ── Push Subscriptions ──────────────────────────────────────────
+
+  /** Store or update a push subscription */
+  savePushSubscription(endpoint: string, p256dh: string, auth: string): void {
+    this.db.raw().prepare(`
+      INSERT INTO push_subscriptions (endpoint, p256dh, auth)
+      VALUES (?, ?, ?)
+      ON CONFLICT(endpoint) DO UPDATE SET p256dh = excluded.p256dh, auth = excluded.auth
+    `).run(endpoint, p256dh, auth);
+  }
+
+  /** Get all push subscriptions */
+  getAllPushSubscriptions(): { endpoint: string; p256dh: string; auth: string }[] {
+    return this.db.raw().prepare(
+      'SELECT endpoint, p256dh, auth FROM push_subscriptions',
+    ).all() as { endpoint: string; p256dh: string; auth: string }[];
+  }
+
+  /** Remove a push subscription (e.g., on 410 Gone) */
+  removePushSubscription(endpoint: string): void {
+    this.db.raw().prepare(
+      'DELETE FROM push_subscriptions WHERE endpoint = ?',
+    ).run(endpoint);
+  }
+
   buildMemorySnapshot(): string {
     const identitySnapshot = this.buildIdentitySnapshot();
 

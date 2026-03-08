@@ -15,6 +15,7 @@ import { MemoryStore } from '../memory/store.js';
 import { callClaude } from '../brain/reasoning.js';
 import { buildReasoningBrief, formatReasoningBrief } from '../brain/reasoning-context.js';
 import { getTimeOfDay, getDayType } from '../soul/personality.js';
+import { sendPushToAll } from '../push/push-service.js';
 
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 
@@ -139,6 +140,13 @@ export async function evaluateOutreach(store: MemoryStore): Promise<string | nul
     new Date().toISOString(),
     'low',
   );
+
+  // Push to Jan's devices (fire-and-forget)
+  sendPushToAll(store, {
+    title: 'Edwin',
+    body: trimmed,
+    url: '/chat',
+  }).catch((err) => console.error('[Heartbeat] Push failed:', err));
 
   return trimmed;
 }

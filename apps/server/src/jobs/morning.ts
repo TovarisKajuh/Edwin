@@ -20,6 +20,7 @@ import { callClaude } from '../brain/reasoning.js';
 import { getTimeOfDay, getDayType } from '../soul/personality.js';
 import { getTopPriorities, formatPriorities } from '../brain/thinking/priority-engine.js';
 import { textToSpeech } from '../voice/speak.js';
+import { sendPushToAll } from '../push/push-service.js';
 
 export interface BriefingContext {
   dayName: string;
@@ -237,6 +238,13 @@ export async function runMorningBriefing(
     new Date().toISOString(),
     'low',
   );
+
+  // Push to Jan's devices (fire-and-forget)
+  sendPushToAll(store, {
+    title: 'Edwin — Morning Briefing',
+    body: text.slice(0, 200),
+    url: '/',
+  }).catch((err) => console.error('[Morning Briefing] Push failed:', err));
 
   const audio = await textToSpeech(text);
   console.log('[Morning Briefing]', text);
