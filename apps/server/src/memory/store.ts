@@ -39,6 +39,14 @@ interface MessageRow {
   timestamp: string;
 }
 
+export interface MemorySearchResult {
+  tier: 'observation' | 'identity' | 'conversation' | 'weekly_summary';
+  category: string;
+  content: string;
+  relevance: number;
+  date: string | null;
+}
+
 export class MemoryStore {
   private db: Database;
 
@@ -379,6 +387,139 @@ export class MemoryStore {
       patterns: string;
       mood_trend: string;
     } | undefined;
+  }
+
+  // ── Memory Search ─────────────────────────────────────────────────
+
+  /**
+   * Search across all memory tiers by keyword.
+   * Returns unified results ranked by relevance: exact match > partial match,
+   * with recency and confidence weighting.
+   */
+  searchMemory(query: string, limit: number = 10): MemorySearchResult[] {
+    const results: MemorySearchResult[] = [];
+    const lowerQuery = query.toLowerCase();
+    const queryPattern = `%${query}%`;
+
+    // 1. Search observations (active only)
+    const observations = this.db.raw().prepare(`
+      SELECT id, category, content, confidence, source, observed_at
+      FROM observations
+      WHERE content LIKE ?
+        AND source NOT IN ('superseded', 'compressed')
+      ORDER BY observed_at DESC
+      LIMIT ?
+    `).all(queryPattern, limit * 2) as ObservationRow[];
+
+    for (const obs of observations) {
+      const lowerContent = obs.content.toLowerCase();
+      let relevance = lowerContent.includes(lowerQuery) ? 5 : 1;
+
+      // Exact match bonus
+      if (lowerContent === lowerQuery) relevance = 10;
+
+      // Confidence weighting
+      relevance *= obs.confidence;
+
+      // Recency bonus (observations from last 7 days get a boost)
+      const ageMs = Date.now() - new Date(obs.observed_at).getTime();
+      const ageDays = ageMs / (1000 * 60 * 60 * 24);
+      if (ageDays < 1) relevance *= 2.0;
+      else if (ageDays < 7) relevance *= 1.5;
+      else if (ageDays < 30) relevance *= 1.2;
+
+      results.push({
+        tier: 'observation',
+        category: obs.category,
+        content: obs.content,
+        relevance,
+        date: obs.observed_at,
+      });
+    }
+
+    // 2. Search identity
+    const identityResults = this.db.raw().prepare(`
+      SELECT category, key, value, confidence
+      FROM identity
+      WHERE value LIKE ? OR key LIKE ?
+      LIMIT ?
+    `).all(queryPattern, queryPattern, limit) as IdentityRow[];
+
+    for (const row of identityResults) {
+      const lowerValue = row.value.toLowerCase();
+      let relevance = lowerValue.includes(lowerQuery) ? 6 : 3;
+      if (lowerValue === lowerQuery) relevance = 10;
+      relevance *= row.confidence;
+
+      // Identity is permanent knowledge — boost it
+      relevance *= 1.3;
+
+      results.push({
+        tier: 'identity',
+        category: row.category,
+        content: `${row.key}: ${row.value}`,
+        relevance,
+        date: row.updated_at,
+      });
+    }
+
+    // 3. Search conversation summaries
+    const conversations = this.db.raw().prepare(`
+      SELECT summary, started_at
+      FROM conversations
+      WHERE summary LIKE ?
+        AND summary IS NOT NULL
+      ORDER BY started_at DESC
+      LIMIT ?
+    `).all(queryPattern, limit) as { summary: string; started_at: string }[];
+
+    for (const conv of conversations) {
+      let relevance = conv.summary.toLowerCase().includes(lowerQuery) ? 4 : 1;
+      results.push({
+        tier: 'conversation',
+        category: 'summary',
+        content: conv.summary,
+        relevance,
+        date: conv.started_at,
+      });
+    }
+
+    // 4. Search weekly summaries
+    const weeklies = this.db.raw().prepare(`
+      SELECT week_start, highlights, concerns, patterns, mood_trend
+      FROM weekly_summaries
+      WHERE highlights LIKE ?
+        OR concerns LIKE ?
+        OR patterns LIKE ?
+      ORDER BY week_start DESC
+      LIMIT ?
+    `).all(queryPattern, queryPattern, queryPattern, limit) as {
+      week_start: string;
+      highlights: string;
+      concerns: string;
+      patterns: string;
+      mood_trend: string;
+    }[];
+
+    for (const weekly of weeklies) {
+      const combined = `${weekly.highlights} ${weekly.concerns} ${weekly.patterns}`;
+      let relevance = combined.toLowerCase().includes(lowerQuery) ? 3 : 1;
+      results.push({
+        tier: 'weekly_summary',
+        category: 'weekly',
+        content: `Week of ${weekly.week_start}: ${weekly.highlights}. Concerns: ${weekly.concerns}. Patterns: ${weekly.patterns}`,
+        relevance,
+        date: weekly.week_start,
+      });
+    }
+
+    // Sort by relevance (highest first), then by date (most recent first)
+    results.sort((a, b) => {
+      if (b.relevance !== a.relevance) return b.relevance - a.relevance;
+      return (b.date ?? '').localeCompare(a.date ?? '');
+    });
+
+    return results.slice(0, limit);
   }
 
   // ── Memory Snapshot ────────────────────────────────────────────────
