@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import type { DashboardData } from '@edwin/shared';
-import { getDashboard } from '@/lib/api';
+import { getDashboard, testPush } from '@/lib/api';
 import { WeatherCard } from '@/components/dashboard/weather-card';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { ScheduleTimeline } from '@/components/dashboard/schedule-timeline';
@@ -70,6 +70,12 @@ export default function DashboardPage() {
           </h1>
           <p className="mt-1 text-sm text-zinc-500">{data.date}</p>
         </div>
+        <button
+          onClick={() => testPush().then((r) => alert(r.sent > 0 ? 'Push sent!' : 'No subscriptions found.')).catch(() => alert('Push failed.'))}
+          className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-400 transition-colors hover:border-amber-400 hover:text-amber-400 active:scale-95"
+        >
+          Test Push
+        </button>
       </header>
 
       {/* Row 1: Weather + Stats */}

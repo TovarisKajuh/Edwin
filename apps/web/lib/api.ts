@@ -178,6 +178,16 @@ export async function getNotificationCount(): Promise<number> {
   return data.count;
 }
 
+export async function testPush(): Promise<{ success: boolean; sent: number }> {
+  const res = await fetch(`${API_URL}/api/push/test`, {
+    method: 'POST',
+    headers: { ...getAuthHeaders() },
+  });
+  if (res.status === 401) throw new AuthError();
+  if (!res.ok) throw new Error(`Push test error: ${res.status}`);
+  return res.json();
+}
+
 export async function getBriefingStatus(): Promise<BriefingStatus> {
   const res = await fetch(`${API_URL}/api/briefing/status`, {
     headers: { ...getAuthHeaders() },
