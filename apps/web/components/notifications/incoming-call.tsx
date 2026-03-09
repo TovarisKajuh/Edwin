@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 interface IncomingCallProps {
   title: string;
@@ -9,17 +9,80 @@ interface IncomingCallProps {
   onDecline: () => void;
 }
 
+/**
+ * Generate a looping ring tone using Web Audio API.
+ * Returns a cleanup function that stops the sound.
+ */
+function startRingSound(): (() => void) | null {
+  try {
+    const ctx = new AudioContext();
+    const gainNode = ctx.createGain();
+    gainNode.gain.value = 0.15;
+    gainNode.connect(ctx.destination);
+
+    let stopped = false;
+
+    // Play a ring pattern: two short tones, pause, repeat
+    function playRingCycle() {
+      if (stopped) return;
+
+      const now = ctx.currentTime;
+
+      // First tone (440Hz, 0.4s)
+      const osc1 = ctx.createOscillator();
+      osc1.type = 'sine';
+      osc1.frequency.value = 440;
+      osc1.connect(gainNode);
+      osc1.start(now);
+      osc1.stop(now + 0.4);
+
+      // Second tone (440Hz, 0.4s after a 0.1s gap)
+      const osc2 = ctx.createOscillator();
+      osc2.type = 'sine';
+      osc2.frequency.value = 440;
+      osc2.connect(gainNode);
+      osc2.start(now + 0.5);
+      osc2.stop(now + 0.9);
+
+      // Schedule next cycle after 2s total
+      setTimeout(() => playRingCycle(), 2000);
+    }
+
+    playRingCycle();
+
+    return () => {
+      stopped = true;
+      ctx.close().catch(() => {});
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function IncomingCall({ title, subtitle, onAccept, onDecline }: IncomingCallProps) {
   const [visible, setVisible] = useState(true);
+  const ringCleanupRef = useRef<(() => void) | null>(null);
 
-  // Auto-dismiss after 30 seconds
+  const stopRing = useCallback(() => {
+    ringCleanupRef.current?.();
+    ringCleanupRef.current = null;
+  }, []);
+
+  // Start ringing sound
+  useEffect(() => {
+    ringCleanupRef.current = startRingSound();
+    return () => stopRing();
+  }, [stopRing]);
+
+  // Auto-dismiss after 60 seconds
   useEffect(() => {
     const timer = setTimeout(() => {
       setVisible(false);
+      stopRing();
       onDecline();
-    }, 30_000);
+    }, 60_000);
     return () => clearTimeout(timer);
-  }, [onDecline]);
+  }, [onDecline, stopRing]);
 
   // Vibration pattern on mobile
   useEffect(() => {
@@ -50,7 +113,7 @@ export function IncomingCall({ title, subtitle, onAccept, onDecline }: IncomingC
         {/* Action buttons */}
         <div className="flex items-center gap-8">
           <button
-            onClick={() => { setVisible(false); onDecline(); }}
+            onClick={() => { setVisible(false); stopRing(); onDecline(); }}
             className="flex h-16 w-16 items-center justify-center rounded-full bg-red-600 text-white transition-transform active:scale-95 hover:bg-red-500"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -58,7 +121,7 @@ export function IncomingCall({ title, subtitle, onAccept, onDecline }: IncomingC
             </svg>
           </button>
           <button
-            onClick={() => { setVisible(false); onAccept(); }}
+            onClick={() => { setVisible(false); stopRing(); onAccept(); }}
             className="flex h-16 w-16 items-center justify-center rounded-full bg-green-600 text-white transition-transform active:scale-95 hover:bg-green-500"
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

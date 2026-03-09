@@ -590,11 +590,12 @@ export class MemoryStore {
     description: string,
     triggerTime: string,
     stakesLevel: string = 'low',
+    response: string | null = null,
   ): number {
     const result = this.db.raw().prepare(`
-      INSERT INTO scheduled_actions (type, description, trigger_time, stakes_level)
-      VALUES (?, ?, ?, ?)
-    `).run(type, description, triggerTime, stakesLevel);
+      INSERT INTO scheduled_actions (type, description, trigger_time, stakes_level, response)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(type, description, triggerTime, stakesLevel, response);
     return Number(result.lastInsertRowid);
   }
 
@@ -623,22 +624,22 @@ export class MemoryStore {
     `).run(id);
   }
 
-  /** Get notifications (type='notification'), most recent first. Pending = unread. */
-  getNotifications(limit: number = 20): { id: number; description: string; trigger_time: string; stakes_level: string; status: string }[] {
+  /** Get notifications (type='notification' or 'briefing'), most recent first. Pending = unread. */
+  getNotifications(limit: number = 20): { id: number; type: string; description: string; trigger_time: string; stakes_level: string; status: string }[] {
     return this.db.raw().prepare(`
-      SELECT id, description, trigger_time, stakes_level, status
+      SELECT id, type, description, trigger_time, stakes_level, status
       FROM scheduled_actions
-      WHERE type = 'notification'
+      WHERE type IN ('notification', 'briefing')
       ORDER BY trigger_time DESC
       LIMIT ?
-    `).all(limit) as { id: number; description: string; trigger_time: string; stakes_level: string; status: string }[];
+    `).all(limit) as { id: number; type: string; description: string; trigger_time: string; stakes_level: string; status: string }[];
   }
 
-  /** Count unread notifications (type='notification' AND status='pending') */
+  /** Count unread notifications (type='notification' or 'briefing' AND status='pending') */
   getUnreadNotificationCount(): number {
     const row = this.db.raw().prepare(`
       SELECT COUNT(*) as count FROM scheduled_actions
-      WHERE type = 'notification' AND status = 'pending'
+      WHERE type IN ('notification', 'briefing') AND status = 'pending'
     `).get() as { count: number };
     return row.count;
   }
@@ -648,9 +649,37 @@ export class MemoryStore {
     const result = this.db.raw().prepare(`
       UPDATE scheduled_actions
       SET status = 'done', updated_at = CURRENT_TIMESTAMP
-      WHERE id = ? AND type = 'notification'
+      WHERE id = ? AND type IN ('notification', 'briefing')
     `).run(id);
     return result.changes > 0;
+  }
+
+  /** Get today's cached briefing (type='briefing', today's date) */
+  getTodayBriefing(): { id: number; description: string; response: string | null; status: string } | undefined {
+    const today = new Date().toISOString().slice(0, 10);
+    return this.db.raw().prepare(`
+      SELECT id, description, response, status
+      FROM scheduled_actions
+      WHERE type = 'briefing'
+        AND DATE(trigger_time) = ?
+      ORDER BY trigger_time DESC
+      LIMIT 1
+    `).get(today) as { id: number; description: string; response: string | null; status: string } | undefined;
+  }
+
+  /** Check if there's a pending (unread) briefing today */
+  getPendingBriefingStatus(): { pending: boolean; id?: number } {
+    const today = new Date().toISOString().slice(0, 10);
+    const row = this.db.raw().prepare(`
+      SELECT id FROM scheduled_actions
+      WHERE type = 'briefing'
+        AND status = 'pending'
+        AND DATE(trigger_time) = ?
+      ORDER BY trigger_time DESC
+      LIMIT 1
+    `).get(today) as { id: number } | undefined;
+
+    return row ? { pending: true, id: row.id } : { pending: false };
   }
 
   // ── Push Subscriptions ──────────────────────────────────────────

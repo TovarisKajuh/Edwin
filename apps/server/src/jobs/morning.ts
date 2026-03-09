@@ -232,30 +232,36 @@ function buildBriefingSystemPrompt(ctx: BriefingContext): string {
 
   return [
     'You are Edwin, a personal life companion for Jan.',
-    'Generate a morning briefing for Jan. Address him as "sir".',
+    'Generate a comprehensive morning briefing for Jan. Address him as "sir".',
+    'This briefing will be read aloud — write it as natural spoken language, 800-1200 words.',
     '',
-    'Format:',
-    '1. A warm, personalized greeting to start the day',
+    'Structure (flow naturally between sections, not as a rigid list):',
+    '1. A warm, personalized greeting to start the day — set the tone immediately',
     ctx.yesterdaySummaries.length > 0
-      ? '2. Brief recap of yesterday (1-2 sentences referencing what actually happened)'
+      ? '2. Yesterday deep recap — what happened, what got done, what didn\'t, what carried over. Be specific.'
       : '2. Skip yesterday recap (no conversations recorded)',
-    '3. Today\'s top priorities (up to 3 — from the priority list, or infer from commitments)',
-    '4. Any commitments or follow-ups due today',
-    '5. Weather mention if available (naturally woven in, not a separate section)',
-    '6. A motivational close that sets the right tone',
+    '3. Today\'s full schedule — walk through the day chronologically if events exist',
+    '4. All priorities with context — not just "do X" but WHY it matters today, what\'s at stake',
+    '5. Commitments and follow-ups — anything Jan promised, anything pending from others',
+    '6. Weather woven naturally into the day plan (e.g., "It\'s going to be 22°C and clear — perfect for...")',
+    '7. Industry news if genuinely relevant — only mention if it affects Jan\'s business or interests',
+    '8. Motivational framework for the day — what would make today a win? What\'s the one thing?',
+    '9. Specific action items — concrete next steps Jan should take, in order of importance',
     '',
     'Rules:',
-    '- Keep the entire briefing under 150 words',
-    '- Be specific — reference real data, not generic platitudes',
-    '- If there are no priorities or commitments, focus on patterns and encouragement',
+    '- Write 800-1200 words. This is a 5-7 minute spoken briefing, not a text notification.',
+    '- Be specific — reference real data, real names, real numbers. No generic platitudes.',
+    '- If there are no priorities or commitments, dig into patterns, goals, and what Jan should be working toward.',
     isSunday
-      ? '- It\'s Sunday — be gentle, restful. No pushing. Let Jan recharge.'
-      : '- It\'s a ' + ctx.dayType + ' — be energizing and motivating.',
+      ? '- It\'s Sunday — be gentle, restful. No pushing. Let Jan recharge. Suggest recovery, reflection, light planning for the week ahead.'
+      : '- It\'s a ' + ctx.dayType + ' — be energizing and motivating. Push Jan toward action.',
     ctx.recentMood
-      ? `- Jan's recent mood: ${ctx.recentMood}. Calibrate your tone accordingly.`
+      ? `- Jan's recent mood: ${ctx.recentMood}. Calibrate your tone accordingly — if he's been low, be warmer; if he's been productive, build on that momentum.`
       : '- No recent mood data. Default to warm and energizing.',
-    '- Do NOT use asterisks or roleplay formatting',
-    '- Write naturally, as Edwin would speak aloud',
+    '- Do NOT use asterisks, bullet points, numbered lists, or roleplay formatting.',
+    '- Write in flowing paragraphs, as Edwin would naturally speak aloud.',
+    '- Use paragraph breaks between major sections for readability.',
+    '- Be Edwin — the wise butler who knows everything about Jan\'s life, not a news anchor reading a script.',
   ].join('\n');
 }
 
@@ -270,7 +276,7 @@ export async function generateMorningBriefing(store: MemoryStore): Promise<strin
   const briefing = await callClaude(
     systemPrompt,
     [{ role: 'user', content: contextPrompt }],
-    { maxTokens: 400 },
+    { maxTokens: 2500 },
   );
 
   return briefing;
@@ -288,19 +294,24 @@ export async function runMorningBriefing(
 ): Promise<{ text: string; audio: ArrayBuffer | null }> {
   const text = await generateMorningBriefing(store);
 
-  // Store as notification so it shows up in Jan's app
+  // Generate TTS audio
+  const audio = await textToSpeech(text);
+  const audioBase64 = audio ? Buffer.from(audio).toString('base64') : null;
+
+  // Store as briefing (not notification) with cached audio in response field
   store.addScheduledAction(
-    'notification',
+    'briefing',
     text,
     new Date().toISOString(),
     'low',
+    audioBase64,
   );
 
-  // Push to Jan's devices (fire-and-forget)
+  // Push to Jan's devices — URL is '/' so incoming call overlay triggers at app root
   sendPushToAll(store, {
     title: 'Edwin — Good Morning, Sir',
     body: text.slice(0, 200),
-    url: '/briefing',
+    url: '/',
     tag: 'morning-briefing',
     actions: [
       { action: 'listen', title: 'Listen to Briefing' },
@@ -309,7 +320,6 @@ export async function runMorningBriefing(
     requireInteraction: true,
   }).catch((err) => console.error('[Morning Briefing] Push failed:', err));
 
-  const audio = await textToSpeech(text);
-  console.log('[Morning Briefing]', text);
+  console.log('[Morning Briefing]', text.slice(0, 100) + '...');
   return { text, audio };
 }

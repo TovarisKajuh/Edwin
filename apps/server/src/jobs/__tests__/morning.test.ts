@@ -312,7 +312,7 @@ describe('Morning Briefing', () => {
   // ── Full Run ───────────────────────────────────────────────────
 
   describe('runMorningBriefing', () => {
-    it('should generate briefing, store as notification, and return text + audio', async () => {
+    it('should generate briefing, store as briefing type, and return text + audio', async () => {
       store.addObservation('commitment', 'Morning gym session', 1.0, 'told');
 
       vi.mocked(callClaude).mockResolvedValue(
@@ -324,12 +324,12 @@ describe('Morning Briefing', () => {
       expect(result.text).toContain('gym');
       expect(result.audio ?? null).toBeNull(); // mocked returns null
 
-      // Should have been stored as notification
+      // Should have been stored as briefing (not notification)
       const pending = store.getPendingActions(10);
-      const notification = pending.find(
-        (a) => a.type === 'notification' && a.description.includes('gym'),
+      const briefing = pending.find(
+        (a) => a.type === 'briefing' && a.description.includes('gym'),
       );
-      expect(notification).toBeDefined();
+      expect(briefing).toBeDefined();
     });
 
     it('should call TTS with briefing text', async () => {
@@ -349,7 +349,7 @@ describe('Morning Briefing', () => {
 
       expect(consoleSpy).toHaveBeenCalledWith(
         '[Morning Briefing]',
-        'Good morning, sir.',
+        expect.stringContaining('Good morning, sir.'),
       );
 
       consoleSpy.mockRestore();

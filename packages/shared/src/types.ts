@@ -136,6 +136,11 @@ export interface StreamDoneEvent {
 
 export type StreamEvent = StreamDeltaEvent | StreamDoneEvent;
 
+export interface BriefingStatus {
+  pending: boolean;
+  id?: number;
+}
+
 export type Source = 'told' | 'observed' | 'inferred' | 'superseded' | 'compressed';
 export type StakesLevel = 'low' | 'medium' | 'high';
 export type Channel = 'chat' | 'voice' | 'notification';

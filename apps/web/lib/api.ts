@@ -1,4 +1,4 @@
-import type { ChatRequest, ChatResponse, DashboardData, BriefingResponse, StreamDoneEvent, Notification, NotificationCountResponse } from '@edwin/shared';
+import type { ChatRequest, ChatResponse, DashboardData, BriefingResponse, StreamDoneEvent, Notification, NotificationCountResponse, BriefingStatus } from '@edwin/shared';
 import { getAuthHeaders } from './auth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -176,6 +176,15 @@ export async function getNotificationCount(): Promise<number> {
   if (!res.ok) throw new Error(`Notification count error: ${res.status}`);
   const data: NotificationCountResponse = await res.json();
   return data.count;
+}
+
+export async function getBriefingStatus(): Promise<BriefingStatus> {
+  const res = await fetch(`${API_URL}/api/briefing/status`, {
+    headers: { ...getAuthHeaders() },
+  });
+  if (res.status === 401) throw new AuthError();
+  if (!res.ok) throw new Error(`Briefing status error: ${res.status}`);
+  return res.json();
 }
 
 export async function markNotificationRead(id: number): Promise<void> {

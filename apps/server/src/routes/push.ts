@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { MemoryStore } from '../memory/store.js';
-import { getVapidPublicKey } from '../push/push-service.js';
+import { getVapidPublicKey, sendPushToAll } from '../push/push-service.js';
 
 interface SubscribeBody {
   endpoint: string;
@@ -42,5 +42,16 @@ export async function pushRoutes(server: FastifyInstance, store: MemoryStore) {
 
     store.removePushSubscription(endpoint);
     return { success: true };
+  });
+
+  /** Send a test push notification to all subscribed devices */
+  server.post('/api/push/test', async () => {
+    const sent = await sendPushToAll(store, {
+      title: 'Edwin — Test',
+      body: 'Push notifications are working, sir.',
+      url: '/',
+      tag: 'test-push',
+    });
+    return { success: true, sent };
   });
 }

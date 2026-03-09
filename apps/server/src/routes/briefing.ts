@@ -1,27 +1,34 @@
 import type { FastifyInstance } from 'fastify';
 import type { MemoryStore } from '../memory/store.js';
-import { generateMorningBriefing, buildBriefingContext } from '../jobs/morning.js';
+import { generateMorningBriefing } from '../jobs/morning.js';
 import { textToSpeech } from '../voice/speak.js';
 
 export async function briefingRoutes(server: FastifyInstance, store: MemoryStore) {
+  /** Serve today's briefing — cached if available, regenerate if not */
   server.get('/api/briefing', async () => {
-    const context = await buildBriefingContext(store);
+    // Check for cached briefing first
+    const cached = store.getTodayBriefing();
+
+    if (cached) {
+      return {
+        text: cached.description,
+        audio: cached.response ?? undefined,
+      };
+    }
+
+    // No cached briefing — generate fresh
     const text = await generateMorningBriefing(store);
     const audioBuffer = await textToSpeech(text);
+    const audio = audioBuffer ? Buffer.from(audioBuffer).toString('base64') : undefined;
 
-    return {
-      text,
-      audio: audioBuffer ? Buffer.from(audioBuffer).toString('base64') : undefined,
-      context: {
-        dayName: context.dayName,
-        date: context.dateStr,
-        dayType: context.dayType,
-        priorityCount: context.priorities.length,
-        commitmentCount: context.pendingCommitments.length,
-        followUpCount: context.followUps.length,
-        hasYesterdayData: context.yesterdaySummaries.length > 0,
-        recentMood: context.recentMood,
-      },
-    };
+    // Cache it as a briefing for today
+    store.addScheduledAction('briefing', text, new Date().toISOString(), 'low', audio ?? null);
+
+    return { text, audio };
+  });
+
+  /** Check if there's a pending (unread) briefing today — used by frontend to trigger incoming call */
+  server.get('/api/briefing/status', async () => {
+    return store.getPendingBriefingStatus();
   });
 }

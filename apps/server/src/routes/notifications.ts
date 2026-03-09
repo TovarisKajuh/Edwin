@@ -13,6 +13,7 @@ export async function notificationRoutes(server: FastifyInstance, store: MemoryS
       timestamp: n.trigger_time,
       read: n.status !== 'pending',
       stakesLevel: (n.stakes_level as 'low' | 'medium' | 'high') || 'low',
+      type: n.type === 'briefing' ? 'briefing' as const : undefined,
     }));
 
     return { notifications };
