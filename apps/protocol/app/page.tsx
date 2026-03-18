@@ -1,7 +1,29 @@
-export default function Home() {
+'use client'
+
+import { useWeekNav } from '@/hooks/use-week-nav'
+import { WeekNav } from '@/components/week-nav'
+import { PhaseHeader } from '@/components/phase-header'
+import { WeekView } from '@/components/week-view'
+import { WeekList } from '@/components/week-list'
+
+export default function HomePage() {
+  const weekNav = useWeekNav()
+
   return (
-    <main className="flex items-center justify-center min-h-screen">
-      <h1 className="text-4xl font-bold">Protocol</h1>
+    <main className="min-h-screen p-4 max-w-7xl mx-auto">
+      <WeekNav {...weekNav} />
+      <PhaseHeader week={weekNav.week} />
+      <div className="hidden md:block mt-4">
+        <WeekView week={weekNav.week} dates={weekNav.dates} />
+      </div>
+      <div className="md:hidden mt-4">
+        <WeekList
+          week={weekNav.week}
+          dates={weekNav.dates}
+          onSwipeLeft={weekNav.goToNext}
+          onSwipeRight={weekNav.goToPrev}
+        />
+      </div>
     </main>
   )
 }
