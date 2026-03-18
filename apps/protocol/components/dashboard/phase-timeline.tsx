@@ -84,17 +84,22 @@ export function PhaseTimeline() {
           const phaseWeeks = phase.weeks[1] - phase.weeks[0] + 1
           const totalProtocolWeeks = PROTOCOL_END_WEEK - PROTOCOL_START_WEEK + 1
 
+          let labelClass: string
+          if (idx === currentPhaseIdx) {
+            labelClass = 'text-[#f0f0f5] font-bold'
+          } else if (idx < currentPhaseIdx) {
+            labelClass = 'text-[#7a7b90]'
+          } else {
+            labelClass = 'text-[#45465a]'
+          }
+
           return (
             <div
               key={phase.name}
               className="text-center"
               style={{ flex: phaseWeeks / totalProtocolWeeks }}
             >
-              <span
-                className={`text-[11px] ${
-                  idx === currentPhaseIdx ? 'text-[#f0f0f5] font-semibold' : 'text-[#45465a]'
-                }`}
-              >
+              <span className={`text-[11px] ${labelClass}`}>
                 {PHASE_SHORT_NAMES[idx]}
               </span>
             </div>
@@ -118,6 +123,11 @@ export function PhaseTimeline() {
           </span>
         )}
       </div>
+
+      {/* Psychology brief */}
+      <p className="text-[13px] text-[#7a7b90] leading-relaxed mt-4">
+        {currentPhase.psychologyBrief}
+      </p>
     </DashboardCard>
   )
 }

@@ -9,7 +9,7 @@ interface DashboardCardProps {
 
 export function DashboardCard({ title, controls, children, className = '' }: DashboardCardProps) {
   return (
-    <div className={`rounded-[20px] bg-[#151729] p-6 ${className}`}>
+    <div className={`rounded-[20px] bg-[#151729]/60 backdrop-blur-xl border border-white/[0.05] p-6 ${className}`}>
       <div className="flex items-center justify-between mb-5">
         <h3 className="text-[17px] font-semibold text-[#f0f0f5]">{title}</h3>
         {controls}

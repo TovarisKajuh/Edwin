@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { DashboardCard } from './dashboard-card'
 import { getWeekNumber, getDayOfWeek, formatDate } from '@/lib/dates'
@@ -8,6 +9,8 @@ import { getPhase, isDeloadWeek } from '@/lib/phase'
 import { PROTOCOL_START_WEEK, PROTOCOL_END_WEEK } from '@/data/constants'
 
 export function TodaysTraining() {
+  const [mode, setMode] = useState<'home' | 'traveling'>('home')
+
   const now = new Date()
   const rawWeek = getWeekNumber(now)
   const week =
@@ -17,7 +20,7 @@ export function TodaysTraining() {
 
   const dow = getDayOfWeek(now)
   const deload = isDeloadWeek(week)
-  const training = getTrainingDay(dow, 'home', deload, week)
+  const training = getTrainingDay(dow, mode, deload, week)
   const phase = getPhase(week)
   const todayStr = formatDate(now)
 
@@ -25,11 +28,27 @@ export function TodaysTraining() {
     <DashboardCard
       title="Today's Training"
       controls={
-        deload ? (
-          <span className="text-[11px] font-semibold rounded-full px-2.5 py-1 bg-[#a78bfa]/15 text-[#a78bfa]">
-            DELOAD
-          </span>
-        ) : undefined
+        <div className="flex items-center gap-2">
+          {deload && (
+            <span className="text-[11px] font-semibold rounded-full px-2.5 py-1 bg-[#a78bfa]/15 text-[#a78bfa]">
+              DELOAD
+            </span>
+          )}
+          <div className="inline-flex rounded-full bg-[#0f1020] p-0.5">
+            <button
+              className={`px-3 py-1 rounded-full text-[11px] font-medium transition-all duration-200 ${mode === 'home' ? 'bg-white text-[#0b0d19]' : 'text-[#7a7b90]'}`}
+              onClick={() => setMode('home')}
+            >
+              Home
+            </button>
+            <button
+              className={`px-3 py-1 rounded-full text-[11px] font-medium transition-all duration-200 ${mode === 'traveling' ? 'bg-white text-[#0b0d19]' : 'text-[#7a7b90]'}`}
+              onClick={() => setMode('traveling')}
+            >
+              Travel
+            </button>
+          </div>
+        </div>
       }
     >
       {!training ? (

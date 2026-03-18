@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { DashboardCard } from './dashboard-card'
 import { getWeekNumber, getDateRange, formatDate, getDayOfWeek, getProtocolDay } from '@/lib/dates'
@@ -12,8 +12,6 @@ const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
 export function ProtocolCalendar() {
   const router = useRouter()
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const currentWeekRef = useRef<HTMLDivElement>(null)
 
   const now = new Date()
   const rawWeek = getWeekNumber(now)
@@ -52,32 +50,20 @@ export function ProtocolCalendar() {
     : startWeight
   const weightLost = startWeight - currentWeight
 
-  // Scroll to current week on mount
-  useEffect(() => {
-    if (currentWeekRef.current && scrollRef.current) {
-      const container = scrollRef.current
-      const target = currentWeekRef.current
-      const containerRect = container.getBoundingClientRect()
-      const targetRect = target.getBoundingClientRect()
-      const scrollOffset = targetRect.top - containerRect.top - containerRect.height / 2 + targetRect.height / 2
-      container.scrollTop += scrollOffset
-    }
-  }, [])
-
   return (
     <DashboardCard title="Protocol Calendar">
       {/* Day headers */}
-      <div className="grid grid-cols-[28px_repeat(7,1fr)] gap-[3px] mb-1">
+      <div className="grid grid-cols-[24px_repeat(7,1fr)] gap-[2px] mb-1">
         <div /> {/* Spacer for week label column */}
         {DAY_LABELS.map((label, i) => (
-          <div key={i} className="text-center text-[11px] text-[#45465a] font-medium">
+          <div key={i} className="text-center text-[9px] text-[#45465a] font-medium">
             {label}
           </div>
         ))}
       </div>
 
-      {/* Scrollable calendar grid */}
-      <div ref={scrollRef} className="overflow-y-auto max-h-[230px] scrollbar-thin">
+      {/* Full calendar grid — no scroll, all 20 weeks visible */}
+      <div>
         {weeks.map((wk) => {
           const isCurrentWk = wk.week === currentWeek
           let rowBg = ''
@@ -87,11 +73,10 @@ export function ProtocolCalendar() {
           return (
             <div
               key={wk.week}
-              ref={isCurrentWk ? currentWeekRef : undefined}
-              className={`grid grid-cols-[28px_repeat(7,1fr)] gap-[3px] mb-[3px] rounded-lg ${rowBg}`}
+              className={`grid grid-cols-[24px_repeat(7,1fr)] gap-[2px] mb-[2px] rounded-lg ${rowBg}`}
             >
               {/* Week label */}
-              <div className="flex items-center justify-center text-[10px] text-[#45465a] font-mono">
+              <div className="flex items-center justify-center text-[9px] text-[#45465a] font-mono">
                 W{wk.week}
               </div>
 
@@ -121,11 +106,11 @@ export function ProtocolCalendar() {
                   <button
                     key={dateStr}
                     onClick={() => router.push(`/day/${dateStr}`)}
-                    className={`relative w-full aspect-square rounded-lg ${btnBg} ${txtColor} ${ring} text-[12px] font-medium flex flex-col items-center justify-center cursor-pointer hover:opacity-80 transition-opacity min-h-[34px]`}
+                    className={`relative w-full aspect-square rounded-md ${btnBg} ${txtColor} ${ring} text-[11px] font-medium flex flex-col items-center justify-center cursor-pointer hover:opacity-80 transition-opacity min-h-[28px]`}
                   >
                     <span>{dayNum}</span>
                     {/* Dots row */}
-                    <div className="flex gap-[2px] mt-[2px]">
+                    <div className="flex gap-[2px] mt-[1px]">
                       {hasTraining && (
                         <span className="block w-[3px] h-[3px] rounded-full bg-[#6b8aff]" />
                       )}

@@ -44,19 +44,12 @@ export function SupplementStack() {
   const compoundCount = allNames.size
 
   return (
-    <DashboardCard title="Supplement Stack">
-      {/* Hero number */}
-      <div className="mb-4">
-        <div className="flex items-baseline gap-2">
-          <span className="text-[48px] font-bold tracking-tight text-[#f0f0f5] leading-none">
-            {compoundCount}
-          </span>
-          <span className="text-[12px] text-[#7a7b90]">compounds today</span>
-        </div>
-      </div>
+    <DashboardCard title="Today's Stack">
+      {/* Compound count */}
+      <p className="text-[13px] text-[#7a7b90] mb-4">{compoundCount} compounds</p>
 
-      {/* Grouped list */}
-      <div className="overflow-y-auto max-h-[200px] space-y-3 scrollbar-thin">
+      {/* Grouped list — no scroll, fills card naturally */}
+      <div className="space-y-3">
         {slotData.map((group) => (
           <div key={group.label}>
             <div className="text-[11px] text-[#45465a] mb-1.5">{group.label}</div>
