@@ -1,6 +1,6 @@
 'use client'
 
-import { PROTOCOL_START_WEEK, PROTOCOL_END_WEEK } from '@/data/constants'
+import { PROTOCOL_START_WEEK, PROTOCOL_END_WEEK, TOTAL_WEEKS } from '@/data/constants'
 import { getWeekNumber } from '@/lib/dates'
 
 interface WeekNavProps {
@@ -24,6 +24,7 @@ export function WeekNav({
 }: WeekNavProps) {
   const progress =
     ((week - PROTOCOL_START_WEEK) / (PROTOCOL_END_WEEK - PROTOCOL_START_WEEK)) * 100
+  const displayWeek = week - PROTOCOL_START_WEEK + 1
 
   const today = new Date()
   const currentWeek = getWeekNumber(today)
@@ -33,12 +34,12 @@ export function WeekNav({
     currentWeek <= PROTOCOL_END_WEEK
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col items-center gap-3 mb-6">
+      <div className="flex items-center gap-4">
         <button
           onClick={goToPrev}
           disabled={!canGoPrev}
-          className="p-2 rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 disabled:opacity-25 disabled:cursor-not-allowed transition-colors cursor-pointer"
+          className="w-10 h-10 rounded-xl bg-[#12121e] border border-white/[0.06] flex items-center justify-center text-[#7a7a95] hover:text-[#f0f0f5] hover:border-white/[0.12] transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
           aria-label="Previous week"
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -51,23 +52,14 @@ export function WeekNav({
             />
           </svg>
         </button>
-
-        <div className="flex items-center gap-3">
-          <span className="text-base font-semibold text-zinc-100">Week {week}</span>
-          {showToday && (
-            <button
-              onClick={() => goToWeek(currentWeek)}
-              className="text-xs text-blue-400 hover:text-blue-300 transition-colors cursor-pointer"
-            >
-              Today
-            </button>
-          )}
+        <div className="text-center min-w-[120px]">
+          <div className="text-lg font-semibold text-[#f0f0f5]">Week {displayWeek}</div>
+          <div className="text-xs text-[#4a4a65]">of {TOTAL_WEEKS}</div>
         </div>
-
         <button
           onClick={goToNext}
           disabled={!canGoNext}
-          className="p-2 rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 disabled:opacity-25 disabled:cursor-not-allowed transition-colors cursor-pointer"
+          className="w-10 h-10 rounded-xl bg-[#12121e] border border-white/[0.06] flex items-center justify-center text-[#7a7a95] hover:text-[#f0f0f5] hover:border-white/[0.12] transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
           aria-label="Next week"
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -83,12 +75,22 @@ export function WeekNav({
       </div>
 
       {/* Progress bar */}
-      <div className="h-0.5 bg-zinc-800 rounded-full overflow-hidden">
+      <div className="w-48 h-1 rounded-full bg-[#12121e]">
         <div
-          className="h-full bg-blue-500 rounded-full transition-all duration-300"
+          className="h-full rounded-full bg-[#6b8aff] transition-all duration-300"
           style={{ width: `${progress}%` }}
         />
       </div>
+
+      {/* Today button */}
+      {showToday && (
+        <button
+          onClick={() => goToWeek(currentWeek)}
+          className="text-xs px-3 py-1 rounded-full bg-[#1a1a2e] border border-white/[0.06] text-[#7a7a95] hover:text-[#f0f0f5] transition-colors duration-200 cursor-pointer"
+        >
+          Today
+        </button>
+      )}
     </div>
   )
 }

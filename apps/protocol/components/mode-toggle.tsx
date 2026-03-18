@@ -9,23 +9,23 @@ interface ModeToggleProps {
 
 export function ModeToggle({ mode, onModeChange }: ModeToggleProps) {
   return (
-    <div className="inline-flex rounded-full bg-zinc-800 p-0.5">
+    <div className="inline-flex rounded-full bg-[#12121e] border border-white/[0.06] p-1">
       <button
         onClick={() => onModeChange('home')}
-        className={`px-3 py-1 text-xs font-medium rounded-full transition-colors cursor-pointer ${
+        className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer ${
           mode === 'home'
-            ? 'bg-zinc-700 text-white'
-            : 'text-zinc-400 hover:text-zinc-300'
+            ? 'bg-white text-[#0a0a14]'
+            : 'text-[#7a7a95] hover:text-[#f0f0f5]'
         }`}
       >
         Home
       </button>
       <button
         onClick={() => onModeChange('traveling')}
-        className={`px-3 py-1 text-xs font-medium rounded-full transition-colors cursor-pointer ${
+        className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer ${
           mode === 'traveling'
-            ? 'bg-zinc-700 text-white'
-            : 'text-zinc-400 hover:text-zinc-300'
+            ? 'bg-white text-[#0a0a14]'
+            : 'text-[#7a7a95] hover:text-[#f0f0f5]'
         }`}
       >
         Traveling

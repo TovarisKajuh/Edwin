@@ -11,17 +11,21 @@ interface DayTimelineProps {
   mode: Mode
 }
 
-// Generate hour labels from the blocks' time range
-function getHourLabels(blocks: TimeBlockType[]): number[] {
-  if (blocks.length === 0) return []
-  const firstHour = parseInt(blocks[0].time.split(':')[0], 10)
-  const lastBlock = blocks[blocks.length - 1]
-  const lastHour = parseInt(lastBlock.endTime.split(':')[0], 10)
-  const hours: number[] = []
-  for (let h = firstHour; h <= Math.min(lastHour, 23); h++) {
-    hours.push(h)
+const SECTIONS = [
+  { name: 'MORNING', start: '05', end: '08' },
+  { name: 'MIDDAY', start: '09', end: '13' },
+  { name: 'AFTERNOON', start: '14', end: '18' },
+  { name: 'EVENING', start: '19', end: '23' },
+]
+
+function getSection(time: string): string {
+  const hour = time.slice(0, 2)
+  for (const section of SECTIONS) {
+    if (hour >= section.start && hour <= section.end) {
+      return section.name
+    }
   }
-  return hours
+  return 'EVENING'
 }
 
 export function DayTimeline({ date, mode }: DayTimelineProps) {
@@ -29,7 +33,29 @@ export function DayTimeline({ date, mode }: DayTimelineProps) {
   const containerRef = useRef<HTMLDivElement>(null)
 
   const blocks = useMemo(() => generateDay(date, mode), [date, mode])
-  const hours = useMemo(() => getHourLabels(blocks), [blocks])
+
+  // Group blocks by section
+  const groupedBlocks = useMemo(() => {
+    const groups: { name: string; blocks: TimeBlockType[] }[] = []
+    const sectionMap = new Map<string, TimeBlockType[]>()
+
+    for (const block of blocks) {
+      const sectionName = getSection(block.time)
+      if (!sectionMap.has(sectionName)) {
+        sectionMap.set(sectionName, [])
+      }
+      sectionMap.get(sectionName)!.push(block)
+    }
+
+    for (const section of SECTIONS) {
+      const sectionBlocks = sectionMap.get(section.name)
+      if (sectionBlocks && sectionBlocks.length > 0) {
+        groups.push({ name: section.name, blocks: sectionBlocks })
+      }
+    }
+
+    return groups
+  }, [blocks])
 
   // Auto-scroll to current time on mount if viewing today
   useEffect(() => {
@@ -39,31 +65,30 @@ export function DayTimeline({ date, mode }: DayTimelineProps) {
 
     if (todayStr === dateStr && containerRef.current) {
       const currentHour = now.getHours()
-      const target = containerRef.current.querySelector(`[data-hour="${currentHour}"]`)
+      const currentSection = getSection(String(currentHour).padStart(2, '0'))
+      const target = containerRef.current.querySelector(`[data-section="${currentSection}"]`)
       if (target) {
-        target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }
     }
   }, [date])
 
   return (
     <>
-      <div ref={containerRef} className="relative px-4 pb-8">
-        {/* Hour gutter + blocks */}
-        <div className="relative">
-          {hours.map((hour) => (
-            <div key={hour} data-hour={hour} className="flex items-start min-h-[2rem]">
-              <div className="shrink-0 w-10 pt-0.5 font-mono text-[10px] text-zinc-600 text-right pr-3">
-                {String(hour).padStart(2, '0')}
+      <div ref={containerRef} className="px-4 pb-8">
+        {groupedBlocks.map((group) => (
+          <div key={group.name} data-section={group.name}>
+            {/* Section header */}
+            <div className="mt-6 mb-3">
+              <div className="border-t border-white/[0.04]" />
+              <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#4a4a65] mt-3">
+                {group.name}
               </div>
-              <div className="flex-1 border-t border-zinc-800/40" />
             </div>
-          ))}
 
-          {/* Block overlay */}
-          <div className="absolute inset-0 pl-10">
-            <div className="space-y-1 pt-1">
-              {blocks.map((block) => (
+            {/* Blocks */}
+            <div className="space-y-2">
+              {group.blocks.map((block) => (
                 <TimeBlock
                   key={block.id}
                   block={block}
@@ -72,7 +97,7 @@ export function DayTimeline({ date, mode }: DayTimelineProps) {
               ))}
             </div>
           </div>
-        </div>
+        ))}
       </div>
 
       <BlockDetail

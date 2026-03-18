@@ -3,8 +3,10 @@
 import { useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { formatDate, getDayOfWeek, getWeekNumber } from '@/lib/dates'
-import { getPhase, isDeloadWeek, isDietBreakWeek, isRefeedSaturday, isBloodworkWeek, getEffectiveCalories } from '@/lib/phase'
+import { isDeloadWeek, isDietBreakWeek, isRefeedSaturday, isBloodworkWeek, getEffectiveCalories } from '@/lib/phase'
 import { getTrainingDay } from '@/lib/schedule'
+import { generateDay } from '@/lib/generator'
+import { CATEGORY_COLORS } from '@/data/constants'
 import { DeloadBadge, DietBreakBadge, RefeedDot, BloodworkPin } from './special-markers'
 
 interface WeekListProps {
@@ -28,6 +30,8 @@ export function WeekList({ week, dates, onSwipeLeft, onSwipeRight }: WeekListPro
       const deload = isDeloadWeek(wk)
       const training = dayOfWeek <= 5 ? getTrainingDay(dayOfWeek, 'home', deload, wk) : null
       const cals = getEffectiveCalories(wk, dayOfWeek)
+      const blocks = generateDay(date, 'home')
+      const uniqueCategories = [...new Set(blocks.map((b) => b.category))]
 
       return {
         date,
@@ -43,13 +47,14 @@ export function WeekList({ week, dates, onSwipeLeft, onSwipeRight }: WeekListPro
         dietBreak: isDietBreakWeek(wk),
         refeed: isRefeedSaturday(wk, dayOfWeek),
         bloodwork: isBloodworkWeek(wk) && dayOfWeek === 1,
+        uniqueCategories,
       }
     })
   }, [dates, todayStr])
 
   return (
     <div
-      className="space-y-1"
+      className="space-y-2"
       onTouchStart={(e) => {
         touchStartX.current = e.touches[0].clientX
       }}
@@ -63,16 +68,18 @@ export function WeekList({ week, dates, onSwipeLeft, onSwipeRight }: WeekListPro
         <Link
           key={row.dateStr}
           href={`/day/${row.dateStr}`}
-          className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+          className={`flex items-center gap-4 px-4 py-4 rounded-xl transition-all duration-200 ${
             row.isToday
-              ? 'bg-zinc-800/50 border border-zinc-700'
-              : 'bg-zinc-900/50 border border-zinc-800/30 hover:border-zinc-700'
+              ? 'bg-[#12121e] border border-white/[0.12] ring-1 ring-[#6b8aff]/40'
+              : 'bg-[#12121e] border border-white/[0.06] hover:border-white/[0.12]'
           }`}
         >
           {/* Date block */}
           <div className="shrink-0 w-12 text-center">
-            <div className="text-[10px] text-zinc-500 uppercase">{row.dayName.slice(0, 3)}</div>
-            <div className={`text-lg font-semibold ${row.isToday ? 'text-zinc-100' : 'text-zinc-300'}`}>
+            <div className="text-xs font-medium uppercase tracking-widest text-[#7a7a95]">
+              {row.dayName.slice(0, 3)}
+            </div>
+            <div className={`text-2xl font-bold ${row.isToday ? 'text-[#f0f0f5]' : 'text-[#f0f0f5]'}`}>
               {row.dayNum}
             </div>
           </div>
@@ -81,16 +88,27 @@ export function WeekList({ week, dates, onSwipeLeft, onSwipeRight }: WeekListPro
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               {row.trainingName && (
-                <span className="text-sm text-zinc-200 truncate">{row.trainingName}</span>
+                <span className="text-sm font-medium text-[#f0f0f5] truncate">{row.trainingName}</span>
               )}
               {row.deload && <DeloadBadge />}
               {row.dietBreak && <DietBreakBadge />}
               {row.refeed && <RefeedDot />}
               {row.bloodwork && <BloodworkPin />}
             </div>
-            <span className="font-mono text-xs text-zinc-500">
+            <span className="font-mono text-xs text-[#7a7a95]">
               {row.calories.toLocaleString()} kcal
             </span>
+          </div>
+
+          {/* Category dots */}
+          <div className="flex gap-1 shrink-0">
+            {row.uniqueCategories.map((cat) => (
+              <span
+                key={cat}
+                className="w-2 h-2 rounded-full"
+                style={{ backgroundColor: CATEGORY_COLORS[cat] ?? '#71717a' }}
+              />
+            ))}
           </div>
 
           {/* Arrow */}
@@ -99,7 +117,7 @@ export function WeekList({ week, dates, onSwipeLeft, onSwipeRight }: WeekListPro
             height="16"
             viewBox="0 0 16 16"
             fill="none"
-            className="shrink-0 text-zinc-600"
+            className="shrink-0 text-[#4a4a65]"
           >
             <path
               d="M6 4l4 4-4 4"

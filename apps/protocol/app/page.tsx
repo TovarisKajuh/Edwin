@@ -10,7 +10,7 @@ export default function HomePage() {
   const weekNav = useWeekNav()
 
   return (
-    <main className="min-h-screen p-4 max-w-7xl mx-auto">
+    <main className="min-h-screen max-w-6xl mx-auto px-4 py-6">
       <WeekNav {...weekNav} />
       <PhaseHeader week={weekNav.week} />
       <div className="hidden md:block mt-4">

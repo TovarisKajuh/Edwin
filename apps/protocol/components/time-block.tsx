@@ -16,37 +16,38 @@ export function TimeBlock({ block, compact, onClick }: TimeBlockProps) {
     return (
       <button
         onClick={onClick}
-        className={`w-full text-left px-2 py-1 rounded-sm transition-colors hover:bg-zinc-800 cursor-pointer ${
-          block.warning ? 'bg-red-950/30' : 'bg-zinc-900'
-        }`}
-        style={{ borderLeft: `3px solid ${color}` }}
+        className="w-full text-left flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors duration-150 hover:bg-[#1a1a2e] cursor-pointer"
       >
-        <span className="font-mono text-[10px] text-zinc-500">{block.time}</span>
-        <span className="text-xs text-zinc-300 ml-1.5 truncate">{block.title}</span>
+        <span className="shrink-0 w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
+        <span className="text-xs text-[#7a7a95] truncate">{block.title}</span>
       </button>
     )
   }
 
+  const hasWarning = !!block.warning
+  const hasEdwinNote = !!block.edwinNote
+
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left px-4 py-3 rounded-lg transition-colors hover:bg-zinc-800/80 cursor-pointer ${
-        block.warning ? 'bg-red-950/30' : 'bg-zinc-900'
+      className={`w-full text-left rounded-xl border px-4 py-3 transition-colors duration-150 cursor-pointer ${
+        hasWarning
+          ? 'bg-red-950/20 border-red-500/20 hover:bg-red-950/30'
+          : hasEdwinNote
+            ? 'bg-amber-950/10 border-white/[0.06] hover:bg-[#1a1a2e]'
+            : 'bg-[#12121e] border-white/[0.06] hover:bg-[#1a1a2e]'
       }`}
-      style={{ borderLeft: `4px solid ${color}` }}
     >
-      <div className="flex items-center gap-3">
-        <span className="font-mono text-xs text-zinc-400 shrink-0">
+      <div className="flex items-center gap-2">
+        <span
+          className="shrink-0 w-2 h-2 rounded-full"
+          style={{ backgroundColor: color }}
+        />
+        <span className="font-mono text-xs text-[#4a4a65]">
           {block.time} – {block.endTime}
         </span>
-        <span
-          className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded font-medium"
-          style={{ color, backgroundColor: `${color}20` }}
-        >
-          {block.category}
-        </span>
       </div>
-      <p className="text-sm text-zinc-100 mt-1 leading-snug">{block.title}</p>
+      <p className="text-sm text-[#f0f0f5] mt-1 leading-snug">{block.title}</p>
     </button>
   )
 }

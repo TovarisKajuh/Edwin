@@ -10,15 +10,13 @@ export function MealDetail({ detail }: MealDetailProps) {
   return (
     <div className="space-y-4">
       {detail.isIsotretinoinMeal && (
-        <div className="bg-red-950/40 border-l-4 border-red-500 px-4 py-2.5 rounded-r-md">
-          <p className="text-sm text-red-300 font-medium">
-            40-50g fat required for isotretinoin absorption
-          </p>
+        <div className="rounded-lg bg-red-950/20 border border-red-500/20 px-3 py-2 text-xs text-red-300">
+          40-50g fat required for isotretinoin absorption
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-2">
-        <MacroBox label="Calories" value={detail.calories} unit="kcal" large />
+      <div className="grid grid-cols-2 gap-3">
+        <MacroBox label="Calories" value={detail.calories} unit="kcal" highlight />
         <MacroBox label="Protein" value={detail.protein} unit="g" />
         <MacroBox label="Fat" value={detail.fat} unit="g" />
         <MacroBox label="Carbs" value={detail.carbs} unit="g" />
@@ -26,10 +24,12 @@ export function MealDetail({ detail }: MealDetailProps) {
 
       {detail.exampleMeals.length > 0 && (
         <div>
-          <h4 className="text-xs text-zinc-500 uppercase tracking-wider mb-1.5">Example meals</h4>
+          <h4 className="text-xs text-[#7a7a95] uppercase tracking-wider mb-1.5 font-medium">
+            Example meals
+          </h4>
           <ul className="space-y-1">
             {detail.exampleMeals.map((meal, i) => (
-              <li key={i} className="text-sm text-zinc-300">
+              <li key={i} className="text-sm text-[#7a7a95]">
                 {meal}
               </li>
             ))}
@@ -39,18 +39,19 @@ export function MealDetail({ detail }: MealDetailProps) {
 
       {detail.supplementsWithMeal.length > 0 && (
         <div>
-          <h4 className="text-xs text-zinc-500 uppercase tracking-wider mb-1.5">
+          <h4 className="text-xs text-[#7a7a95] uppercase tracking-wider mb-1.5 font-medium">
             Supplements with meal
           </h4>
           <div className="flex flex-wrap gap-1.5">
             {detail.supplementsWithMeal.map((supp) => (
               <span
                 key={supp.name}
-                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs bg-zinc-800 text-zinc-300"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs bg-[#1a1a2e] border border-white/[0.06] text-[#f0f0f5]"
                 title={supp.why}
               >
+                <span className="w-1.5 h-1.5 rounded-full bg-[#c084fc]" />
                 <span className="font-medium">{supp.name}</span>
-                <span className="font-mono text-zinc-400">{supp.dose}</span>
+                <span className="font-mono text-[#7a7a95]">{supp.dose}</span>
               </span>
             ))}
           </div>
@@ -58,7 +59,7 @@ export function MealDetail({ detail }: MealDetailProps) {
       )}
 
       {detail.costNote && (
-        <p className="text-xs text-zinc-500">{detail.costNote}</p>
+        <p className="text-xs text-[#4a4a65] mt-2">{detail.costNote}</p>
       )}
     </div>
   )
@@ -68,19 +69,22 @@ function MacroBox({
   label,
   value,
   unit,
-  large,
+  highlight,
 }: {
   label: string
   value: number
   unit: string
-  large?: boolean
+  highlight?: boolean
 }) {
   return (
-    <div className="bg-zinc-800/50 rounded-lg px-3 py-2">
-      <div className="text-[10px] text-zinc-500 uppercase tracking-wider">{label}</div>
-      <div className={`font-mono font-bold text-zinc-100 ${large ? 'text-xl' : 'text-base'}`}>
+    <div className="rounded-xl bg-[#0f0f1a] p-4 text-center">
+      <div
+        className={`text-2xl font-mono font-bold ${highlight ? 'text-[#4ade80]' : 'text-[#f0f0f5]'}`}
+      >
         {value.toLocaleString()}
-        <span className="text-xs text-zinc-400 font-normal ml-0.5">{unit}</span>
+      </div>
+      <div className="text-xs text-[#7a7a95] mt-1">
+        {label} <span className="text-[#4a4a65]">{unit}</span>
       </div>
     </div>
   )

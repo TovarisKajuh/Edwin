@@ -38,16 +38,15 @@ export function WeekView({ week, dates }: WeekViewProps) {
   }, [dates, todayStr])
 
   return (
-    <div className="flex gap-1">
+    <div className="grid grid-cols-7 gap-3">
       {columns.map((col) => (
-        <div key={col.dateStr} className="flex-1 min-w-0">
-          <DayColumn
-            date={col.date}
-            blocks={col.blocks}
-            isToday={col.isToday}
-            specialMarkers={col.specialMarkers}
-          />
-        </div>
+        <DayColumn
+          key={col.dateStr}
+          date={col.date}
+          blocks={col.blocks}
+          isToday={col.isToday}
+          specialMarkers={col.specialMarkers}
+        />
       ))}
     </div>
   )

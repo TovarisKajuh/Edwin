@@ -28,61 +28,63 @@ export function PhaseHeader({ week, compact }: PhaseHeaderProps) {
 
   if (compact) {
     return (
-      <div className="px-4 py-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-        <span className="font-bold uppercase tracking-wider text-zinc-300">
+      <div className="rounded-xl bg-[#12121e] border border-white/[0.06] px-4 py-3 flex items-center gap-4 flex-wrap mb-6">
+        <span className="text-sm font-bold text-[#f0f0f5]">
           {phase.name}
         </span>
-        <span className="text-zinc-500">
-          Wk {weekInProtocol}/{totalWeeks}
+        <span className="text-xs font-mono text-[#7a7a95]">
+          ~{weight}kg &middot; {bf}% BF &middot; {cals.toLocaleString()} kcal
         </span>
-        <span className="font-mono text-zinc-400">
-          ~{weight}kg &middot; {bf}% BF
-        </span>
-        <span className="font-mono text-zinc-400">{cals.toLocaleString()} kcal</span>
-        {deload && <DeloadBadge />}
-        {dietBreak && <DietBreakBadge />}
-        {bloodwork && <BloodworkPin />}
+        <div className="flex items-center gap-2">
+          {deload && <DeloadBadge />}
+          {dietBreak && <DietBreakBadge />}
+          {bloodwork && <BloodworkPin />}
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-2 mt-2">
-      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-        <h2 className="text-2xl font-bold uppercase tracking-wider text-zinc-100">
+    <div className="rounded-2xl bg-[#12121e] border border-white/[0.06] p-6 mb-6">
+      {/* Top row */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <h2 className="text-3xl font-bold tracking-tight text-[#f0f0f5]">
           {phase.name}
         </h2>
-        <span className="text-xs bg-zinc-800 text-zinc-400 px-2.5 py-1 rounded-full font-medium">
+        <span className="text-xs uppercase tracking-widest text-[#7a7a95] bg-[#1a1a2e] px-3 py-1 rounded-full font-medium">
           Week {weekInProtocol} of {totalWeeks}
-        </span>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-        <span className="font-mono text-sm text-zinc-400">
-          ~{weight} kg &middot; {bf}% BF
-        </span>
-        <span className="font-mono text-sm text-zinc-400">
-          {cals.toLocaleString()} kcal
         </span>
         <div className="flex items-center gap-2">
           {deload && <DeloadBadge />}
           {dietBreak && <DietBreakBadge />}
-          {bloodwork && (
-            <span className="flex items-center gap-1 text-xs text-red-400">
-              <BloodworkPin /> Bloodwork this week
-            </span>
-          )}
+          {bloodwork && <BloodworkPin />}
+        </div>
+      </div>
+
+      {/* Metrics row */}
+      <div className="grid grid-cols-3 gap-3 mt-4">
+        <div className="rounded-xl bg-[#0f0f1a] px-5 py-4 text-center">
+          <div className="text-4xl font-mono font-bold text-[#f0f0f5]">{weight}</div>
+          <div className="text-xs text-[#7a7a95] mt-1">kg</div>
+        </div>
+        <div className="rounded-xl bg-[#0f0f1a] px-5 py-4 text-center">
+          <div className="text-4xl font-mono font-bold text-[#f0f0f5]">{bf}</div>
+          <div className="text-xs text-[#7a7a95] mt-1">% body fat</div>
+        </div>
+        <div className="rounded-xl bg-[#0f0f1a] px-5 py-4 text-center">
+          <div className="text-4xl font-mono font-bold text-[#f0f0f5]">{cals.toLocaleString()}</div>
+          <div className="text-xs text-[#7a7a95] mt-1">kcal</div>
         </div>
       </div>
 
       {/* Psychology brief */}
-      <div className="text-sm text-zinc-500 leading-relaxed">
+      <div className="text-sm text-[#7a7a95] leading-relaxed mt-4">
         {/* Mobile: collapsible */}
         <div className="md:hidden">
           <p className={expanded ? '' : 'line-clamp-2'}>{phase.psychologyBrief}</p>
           <button
             onClick={() => setExpanded(!expanded)}
-            className="text-zinc-400 hover:text-zinc-300 text-xs mt-0.5 cursor-pointer"
+            className="text-[#4a4a65] hover:text-[#7a7a95] text-xs mt-0.5 cursor-pointer transition-colors duration-200"
           >
             {expanded ? 'Show less' : '...more'}
           </button>

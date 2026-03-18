@@ -33,12 +33,12 @@ export const YOHIMBINE_GYM_DOSE: Record<number, number> = {
 }
 
 export const CATEGORY_COLORS: Record<string, string> = {
-  training: '#3b82f6',
-  nutrition: '#22c55e',
-  supplements: '#a855f7',
-  peptides: '#6366f1',
-  cardio: '#f97316',
-  skincare: '#6b7280',
-  monitoring: '#eab308',
-  sleep: '#334155',
+  training: '#6b8aff',
+  nutrition: '#4ade80',
+  supplements: '#c084fc',
+  peptides: '#818cf8',
+  cardio: '#fb923c',
+  skincare: '#94a3b8',
+  monitoring: '#fbbf24',
+  sleep: '#475569',
 }
