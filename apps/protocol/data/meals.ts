@@ -1,6 +1,7 @@
 import type { MealSlot, Mode } from './types'
 import { PHASES } from './phases'
 import { DIET_BREAK_CALORIES, REFEED_START_WEEK } from './constants'
+import { getRefeedCalories } from '../lib/phase'
 
 export const MEAL_SLOTS_HOME: MealSlot[] = [
   {
@@ -211,12 +212,12 @@ export function getMealMacros(
   let protein = baseProtein
   let fat = baseFat
 
-  // Refeed: add extra carbs to reach refeed calorie target (distributed across meals 2-5)
+  // Refeed: add extra carbs to reach maintenance target (distributed across meals 2-5)
   if (isRefeed && week >= REFEED_START_WEEK && slotIndex >= 1 && slotIndex <= 4) {
-    // Refeed adds ~300kcal above current phase calories, all from carbs
-    const refeedExtraCalories = 300
-    const refeedExtraCarbsTotal = refeedExtraCalories / 4 // 75g carbs total
-    carbs += refeedExtraCarbsTotal / 4 // split across 4 meals
+    const refeedTarget = getRefeedCalories(week)
+    const extraCalories = refeedTarget - phase.calories
+    const extraCarbsTotal = extraCalories / 4 // all extra from carbs (g)
+    carbs += extraCarbsTotal / 4 // split across 4 meals
   }
 
   // Diet break: add extra carbs to reach maintenance target
@@ -239,12 +240,11 @@ export function getWeeklyCostNote(week: number): string {
   const phase = getPhaseForWeek(week)
   const phaseIndex = PHASES.indexOf(phase)
 
+  // Deterministic cost based on phase (no Math.random in pure functions)
   if (phaseIndex <= 2) {
-    // Phases 1-3: more carbs = slightly more expensive
-    const cost = 48 + Math.round(Math.random() * 4) // ~48-52
-    return `This week's meal prep grocery list: ~\u20AC${cost}. That's what you used to spend on 4 Wolt orders.`
+    // Phases 1-3: more carbs = slightly more expensive (~€50/week)
+    return `This week's meal prep grocery list: ~\u20AC50. That's what you used to spend on 4 Wolt orders.`
   }
-  // Phases 4-5: fewer carbs = slightly cheaper
-  const cost = 45 + Math.round(Math.random() * 3) // ~45-48
-  return `This week's meal prep grocery list: ~\u20AC${cost}. That's what you used to spend on 4 Wolt orders.`
+  // Phases 4-5: fewer carbs = slightly cheaper (~€46/week)
+  return `This week's meal prep grocery list: ~\u20AC46. That's what you used to spend on 4 Wolt orders.`
 }

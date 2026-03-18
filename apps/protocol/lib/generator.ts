@@ -1,5 +1,5 @@
 import type { Mode, TimeBlock, Explanation, MealDetail, TrainingDetail, Category } from '@/data/types'
-import { MEAL_SLOTS_HOME, MEAL_SLOTS_TRAVEL, getMealMacros } from '@/data/meals'
+import { MEAL_SLOTS_HOME, MEAL_SLOTS_TRAVEL, getMealMacros, getWeeklyCostNote } from '@/data/meals'
 import { SKINCARE_AM, SKINCARE_PM, BLEACH_BATH } from '@/data/skincare'
 import { DAILY_CHECKS, BLOODWORK_PANELS } from '@/data/monitoring'
 import { getCardioSession } from '@/data/cardio'
@@ -301,6 +301,9 @@ export function generateDay(date: Date, mode: Mode): TimeBlock[] {
 
     if (dietBreak) {
       mealDetail.costNote = 'Diet break week — maintenance calories for metabolic recovery.'
+    } else if (isSunday && i === 0) {
+      // Sunday meal 1: weekly cost note + meal prep reminder
+      mealDetail.costNote = getWeeklyCostNote(week) + ' 2 hours of prep today eliminates 7 days of decisions.'
     }
 
     let mealWarning: string | undefined
@@ -370,7 +373,7 @@ export function generateDay(date: Date, mode: Mode): TimeBlock[] {
     }
   }
 
-  // ─── 17:00 Peptides: BPC-157 #2 + GHK-Cu + TB-500 (weekdays) ─
+  // ─── 17:00 Peptides: BPC-157 #2 + GHK-Cu + TB-500 (weekdays), BPC-157 #2 only (weekends) ─
   if (weekday) {
     const lateSupps = getSupplementsForTimeSlot('late_afternoon', week, mode, dayOfWeek, date)
     if (lateSupps.length > 0) {
@@ -400,6 +403,23 @@ export function generateDay(date: Date, mode: Mode): TimeBlock[] {
         }),
       })
     }
+  } else {
+    // Weekend: BPC-157 is twice daily EVERY day (not weekday-only)
+    const bpcCompound = compoundLookup('BPC-157')
+    blocks.push({
+      id: makeId(date, '17:00', 'peptides'),
+      time: '17:00',
+      endTime: '17:05',
+      title: 'BPC-157 250mcg SubQ #2',
+      category: 'peptides',
+      explanation: makeExplanation({
+        what: 'BPC-157 250mcg subcutaneous injection — second dose of the day. Rotate injection site from morning dose.',
+        doseToday: 'BPC-157 250mcg SubQ (abdomen)',
+        whyToday: `Weekend dose. BPC-157 is taken every day including weekends — twice daily, ~8-12 hours apart. Unlike CJC/Ipa and GHK-Cu, BPC-157 does not need receptor sensitivity breaks.`,
+        mechanism: bpcCompound?.mechanism ?? '',
+        phaseNote: bpcCompound?.whyInProtocol ?? '',
+      }),
+    })
   }
 
   // ─── 20:30 Skincare: PM Routine ───────────────────────────────

@@ -42,7 +42,7 @@ export function getSupplementsForTimeSlot(
       return getPostCardio()
 
     case 'with_meal_3':
-      return getMeal3()
+      return getMeal3(mode)
 
     case 'with_meal_4':
       return getMeal4()
@@ -110,11 +110,16 @@ function getPostCardio(): SupplementEntry[] {
   ]
 }
 
-function getMeal3(): SupplementEntry[] {
-  return [
+function getMeal3(mode: Mode): SupplementEntry[] {
+  const items: SupplementEntry[] = [
     { name: 'HMB', dose: '1g', why: 'Anti-catabolic protection (dose 2 of 3)' },
     { name: 'Berberine', dose: '500mg', why: 'Blood sugar management (dose 2 of 3)' },
   ]
+  // Magnesium Citrate on traveling days only (heavy labor increases magnesium depletion)
+  if (mode === 'traveling') {
+    items.push({ name: 'Magnesium Citrate', dose: '200mg', why: 'Extra magnesium for heavy labor day sweat losses' })
+  }
+  return items
 }
 
 function getMeal4(): SupplementEntry[] {

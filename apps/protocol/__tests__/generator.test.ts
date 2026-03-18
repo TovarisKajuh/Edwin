@@ -105,12 +105,16 @@ describe('generateDay', () => {
     expect(morning!.title).toContain('Progress Photos')
   })
 
-  it('no late afternoon peptides on weekends', () => {
+  it('only BPC-157 (no GHK-Cu/TB-500) in late afternoon on weekends', () => {
     const blocks = generateDay(new Date(Date.UTC(2026, 4, 9)), 'home')
     const latePeptides = blocks.find(
       (b) => b.category === 'peptides' && b.time === '17:00'
     )
-    expect(latePeptides).toBeUndefined()
+    // BPC-157 is twice daily EVERY day including weekends
+    expect(latePeptides).toBeDefined()
+    expect(latePeptides!.title).toContain('BPC-157')
+    // GHK-Cu and TB-500 are weekday-only
+    expect(latePeptides!.title).not.toContain('GHK-Cu')
   })
 
   it('bloodwork block on Monday of week 12', () => {
