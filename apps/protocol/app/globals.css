@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: #09090b;
+  --color-foreground: #fafafa;
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-training: #3b82f6;
+  --color-nutrition: #22c55e;
+  --color-supplements: #a855f7;
+  --color-peptides: #6366f1;
+  --color-cardio: #f97316;
+  --color-skincare: #6b7280;
+  --color-monitoring: #eab308;
+  --color-sleep: #334155;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
