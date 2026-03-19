@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Protocol Guide — Peptide &amp; Supplement Reference</title>
+  <style>
+    /* ── Reset & Base ───────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      font-size: 15px;
+      line-height: 1.7;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #fafaf8;
+      color: #2d3748;
+      padding: 24px 16px 64px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    /* ── Typography ─────────────────────────────────── */
+    h1 { font-size: 2rem; font-weight: 700; line-height: 1.2; }
+    h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 16px; line-height: 1.3; }
+    h3 { font-size: 1.15rem; font-weight: 600; margin-bottom: 12px; line-height: 1.4; }
+    h4 { font-size: 1rem; font-weight: 600; margin-bottom: 8px; }
+
+    p { margin-bottom: 12px; }
+    .muted { color: #718096; }
+    .mono { font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace; }
+    strong { font-weight: 600; }
+    em { font-style: italic; color: #718096; }
+
+    /* ── Card ────────────────────────────────────────── */
+    .card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 28px 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    /* ── Cover / Header ─────────────────────────────── */
+    .cover {
+      text-align: center;
+      padding: 48px 24px 40px;
+      margin-bottom: 32px;
+      background: linear-gradient(135deg, #ebf4ff 0%, #f0fff4 50%, #faf5ff 100%);
+    }
+    .cover h1 { margin-bottom: 8px; color: #1a202c; }
+    .cover .subtitle {
+      font-size: 1.1rem;
+      color: #4a5568;
+      margin-bottom: 16px;
+      max-width: 520px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .cover .date-badge {
+      display: inline-block;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 99px;
+      padding: 6px 20px;
+      font-size: 0.85rem;
+      color: #718096;
+      font-weight: 500;
+    }
+
+    /* ── Section Headers ────────────────────────────── */
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .section-header .emoji {
+      font-size: 1.5rem;
+      line-height: 1;
+    }
+
+    /* ── Tables ──────────────────────────────────────── */
+    .table-wrap { overflow-x: auto; margin-bottom: 16px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+    }
+    thead th {
+      background: #ebf4ff;
+      text-align: left;
+      padding: 10px 12px;
+      font-weight: 600;
+      border-bottom: 2px solid #bee3f8;
+      white-space: nowrap;
+    }
+    tbody td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e2e8f0;
+      vertical-align: top;
+    }
+    tbody tr:nth-child(even) td { background: #f7fafc; }
+    td .mono, th .mono {
+      font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+      font-size: 0.88rem;
+    }
+
+    /* purple header variant */
+    table.purple thead th { background: #faf5ff; border-bottom-color: #d6bcfa; }
+    /* green header variant */
+    table.green thead th { background: #f0fff4; border-bottom-color: #9ae6b4; }
+    /* amber header variant */
+    table.amber thead th { background: #fffaf0; border-bottom-color: #fbd38d; }
+
+    /* ── Step List ───────────────────────────────────── */
+    .steps { list-style: none; counter-reset: step; padding: 0; }
+    .steps li {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      margin-bottom: 14px;
+      line-height: 1.6;
+    }
+    .steps li::before {
+      counter-increment: step;
+      content: counter(step);
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #4299e1;
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 2px;
+    }
+    .steps.green li::before { background: #48bb78; }
+    .steps.purple li::before { background: #9f7aea; }
+    .steps.amber li::before { background: #ed8936; }
+
+    /* ── Tip / Warning / Critical boxes ──────────────── */
+    .box {
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin: 16px 0;
+      font-size: 0.93rem;
+      line-height: 1.65;
+    }
+    .box-icon { font-size: 1.1rem; margin-right: 6px; }
+
+    .tip {
+      background: #f0fff4;
+      border-left: 4px solid #48bb78;
+      color: #276749;
+    }
+    .warning {
+      background: #fffaf0;
+      border-left: 4px solid #ed8936;
+      color: #7b341e;
+    }
+    .critical {
+      background: #fff5f5;
+      border-left: 4px solid #f56565;
+      color: #9b2c2c;
+    }
+
+    /* ── Quick Ref pills ─────────────────────────────── */
+    .pill {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      margin-right: 6px;
+      vertical-align: middle;
+      position: relative;
+      top: -1px;
+    }
+    .pill-green { background: #48bb78; }
+    .pill-blue { background: #4299e1; }
+    .pill-purple { background: #9f7aea; }
+    .pill-amber { background: #ed8936; }
+    .pill-red { background: #f56565; }
+
+    .qr-block {
+      margin-bottom: 20px;
+    }
+    .qr-block h4 {
+      margin-bottom: 10px;
+      color: #4a5568;
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .qr-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      font-size: 0.95rem;
+    }
+    .qr-dose {
+      margin-left: auto;
+      font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+      color: #718096;
+      font-size: 0.85rem;
+      white-space: nowrap;
+    }
+
+    /* ── Site rotation diagram ──────────────────────── */
+    .rotation-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      grid-template-rows: repeat(5, 1fr);
+      gap: 4px;
+      max-width: 240px;
+      margin: 16px auto;
+      text-align: center;
+      font-size: 0.85rem;
+    }
+    .rotation-grid .zone {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #ebf4ff;
+      border: 2px solid #bee3f8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: #4299e1;
+      margin: 0 auto;
+    }
+    .rotation-grid .navel {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #faf5ff;
+      border: 2px dashed #d6bcfa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      color: #9f7aea;
+      font-weight: 600;
+      margin: 0 auto;
+    }
+    .rotation-grid .empty { visibility: hidden; }
+
+    /* ── TB Calendar ─────────────────────────────────── */
+    .cal-week {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+    }
+    .cal-label {
+      min-width: 80px;
+      font-weight: 600;
+      color: #4a5568;
+    }
+    .cal-day {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #ebf4ff;
+      border: 1px solid #bee3f8;
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 0.85rem;
+      font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+    }
+    .cal-day .check { color: #48bb78; font-weight: 700; }
+
+    /* ── FAQ ──────────────────────────────────────────── */
+    .faq-item { margin-bottom: 18px; }
+    .faq-q {
+      font-weight: 600;
+      color: #2d3748;
+      margin-bottom: 4px;
+    }
+    .faq-a {
+      color: #4a5568;
+      padding-left: 4px;
+    }
+
+    /* ── Footer ──────────────────────────────────────── */
+    .footer {
+      text-align: center;
+      padding: 32px 0 0;
+      color: #a0aec0;
+      font-size: 0.8rem;
+    }
+
+    /* ── Divider ─────────────────────────────────────── */
+    hr.soft {
+      border: none;
+      border-top: 1px solid #e2e8f0;
+      margin: 20px 0;
+    }
+
+    /* ── Schedule badge ──────────────────────────────── */
+    .sched-badge {
+      display: inline-block;
+      padding: 3px 12px;
+      border-radius: 99px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 12px;
+    }
+    .sched-a { background: #ebf4ff; color: #2b6cb0; }
+    .sched-b { background: #f0fff4; color: #276749; }
+    .sched-c { background: #faf5ff; color: #6b46c1; }
+
+    /* ── Consumables list ────────────────────────────── */
+    .check-list { list-style: none; padding: 0; }
+    .check-list li {
+      padding: 6px 0;
+      padding-left: 28px;
+      position: relative;
+      border-bottom: 1px solid #f7fafc;
+    }
+    .check-list li::before {
+      content: "\\2610";
+      position: absolute;
+      left: 0;
+      top: 6px;
+      font-size: 1.1rem;
+      color: #a0aec0;
+    }
+
+    /* ── Print ───────────────────────────────────────── */
+    @media print {
+      body { background: #fff; padding: 0; font-size: 13px; }
+      .card { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
+      .cover { background: #fff; border: 1px solid #ddd; }
+      h2 { page-break-after: avoid; }
+      table { page-break-inside: avoid; }
+      .section-print-break { page-break-before: always; }
+    }
+
+    /* ── Responsive ──────────────────────────────────── */
+    @media (max-width: 600px) {
+      body { padding: 12px 8px 48px; }
+      .card { padding: 20px 16px; border-radius: 12px; }
+      .cover { padding: 32px 16px; border-radius: 12px; }
+      table { font-size: 0.82rem; }
+      thead th, tbody td { padding: 8px 8px; }
+      .rotation-grid { max-width: 200px; }
+      .rotation-grid .zone, .rotation-grid .navel { width: 34px; height: 34px; font-size: 0.78rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- ═══════════════════════════════════════════════════
+       COVER
+       ═══════════════════════════════════════════════════ -->
+  <div class="card cover">
+    <h1>Your Protocol Guide</h1>
+    <p class="subtitle">Everything you need to know about reconstituting, injecting, and storing your peptides</p>
+    <span class="date-badge">22-Week Recomposition Protocol &mdash; Starting March 23, 2026</span>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════
+       INVENTORY
+       ═══════════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="section-header">
+      <span class="emoji">&#x1F4CB;</span>
+      <h2 style="margin-bottom:0">Your Inventory</h2>
+    </div>
+
+    <h3>Peptide Vials</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Compound</th>
+            <th>Vials</th>
+            <th>Per Vial</th>
+            <th>Total</th>
+            <th>Supplier</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>BPC-157</td>
+            <td>2 <span class="muted">(+1 ordered)</span></td>
+            <td class="mono">5 mg</td>
+            <td class="mono">15 mg</td>
+            <td>Particle Peptides</td>
+          </tr>
+          <tr>
+            <td>CJC-1295 no DAC <span class="muted">(Mod GRF 1-29)</span></td>
+            <td>1</td>
+            <td class="mono">5 mg</td>
+            <td class="mono">5 mg</td>
+            <td>Particle Peptides</td>
+          </tr>
+          <tr>
+            <td>Ipamorelin</td>
+            <td>1</td>
+            <td class="mono">5 mg</td>
+            <td class="mono">5 mg</td>
+            <td>Particle Peptides</td>
+          </tr>
+          <tr>
+            <td>TB-500 <span class="muted">(Thymosin Beta-4)</span></td>
+            <td>1 <span class="muted">(+1 ordered)</span></td>
+            <td class="mono">10 mg</td>
+            <td class="mono">20 mg</td>
+            <td>Particle Peptides</td>
+          </tr>
+          <tr>
+            <td>GHK-Cu</td>
+            <td>1</td>
+            <td class="mono">50 mg</td>
+            <td class="mono">50 mg</td>
+            <td>Particle Peptides</td>
+          </tr>
+          <tr>
+            <td>Semax</td>
+            <td>1</td>
+            <td class="mono">10 mg</td>
+            <td class="mono">10 mg</td>
+            <td>ReceptorChem</td>
+          </tr>
+          <tr>
+            <td>Selank</td>
+            <td>1</td>
+            <td class="mono">10 mg</td>
+            <td class="mono">10 mg</td>
+            <td>ReceptorChem</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <hr class="soft">
+
+    <h3>You Also Need (Consumables)</h3>
+    <ul class="check-list">
+      <li>Bacteriostatic water (bac water) &mdash; at least 1&times; 30 ml vial</li>
+      <li>Insulin syringes &mdash; 29-31 gauge, 1 ml (100 IU), for injections</li>
+      <li>3 ml syringes with needle &mdash; for reconstitution (drawing bac water)</li>
+      <li>Alcohol swabs</li>
+      <li>2&times; empty nasal spray bottles (0.1 ml per pump) &mdash; for Semax and Selank</li>
+      <li>Small insulated cooler bag + 1 reusable ice pack</li>
+      <li>Small thermometer (optional but recommended)</li>
+      <li>Labels or tape + marker (to label reconstituted vials)</li>
+    </ul>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════
+       RECONSTITUTION
+       ═══════════════════════════════════════════════════ -->
+  <div class="card section-print-break">
+    <div class="section-header">
+      <span class="emoji">&#x1F9EA;</span>
+      <h2 style="margin-bottom:0">How to Reconstitute Each Vial</h2>
+    </div>
+
+    <p>Reconstitution means adding bacteriostatic water to the freeze-dried powder to turn it into an injectable liquid. The process is the same for every vial &mdash; only the amount of water changes.</p>
+
+    <h3>General Steps (Same for All Vials)</h3>
+    <ol class="steps">
+      <li><span>&#x1F9FC; <strong>Wash your hands</strong> thoroughly with soap and water.</span></li>
+      <li><span>&#x1F9F4; <strong>Swab the tops</strong> of both the peptide vial and the bac water vial with an alcohol swab. Let both dry for 10 seconds.</span></li>
+      <li><span>&#x1F4A7; Using a <strong>3 ml syringe</strong> (NOT your tiny insulin syringe), draw the correct amount of bac water from the table below.</span></li>
+      <li><span>&#x1F3AF; Insert the needle into the peptide vial at an angle. Inject the water <strong>slowly</strong>, aiming it down the inside wall of the glass. <strong>Never squirt directly onto the powder</strong> &mdash; the force can break peptide bonds. Let the water trickle down the glass onto the powder cake.</span></li>
+      <li><span>&#x1F504; Remove the needle. <strong>Do NOT shake.</strong> Either swirl the vial very gently between your fingers, or just set it in the fridge and let it dissolve on its own over 5&ndash;10 minutes. It will become a clear liquid.</span></li>
+      <li><span>&#x2705; Once the solution is <strong>completely clear</strong> with no floating particles, it's ready.</span></li>
+      <li><span>&#x1F3F7;&#xFE0F; <strong>Label the vial</strong> with: compound name, date reconstituted, concentration (mg/ml), and discard-by date.</span></li>
+      <li><span>&#x1F9CA; <strong>Put it in the fridge immediately.</strong></span></li>
+    </ol>
+
+    <hr class="soft">
+
+    <h3>Specific Reconstitution for Each Vial</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Vial</th>
+            <th>Powder</th>
+            <th>Add Bac Water</th>
+            <th>Concentration</th>
+            <th>1 Dose =</th>
+            <th>Draw</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>BPC-157</td>
+            <td class="mono">5 mg</td>
+            <td class="mono"><strong>2.0 ml</strong></td>
+            <td class="mono">2.5 mg/ml</td>
+            <td class="mono">250 mcg</td>
+            <td class="mono"><strong>10 IU</strong> (0.1 ml)</td>
+          </tr>
+          <tr>
+            <td>CJC-1295</td>
+            <td class="mono">5 mg</td>
+            <td class="mono"><strong>2.5 ml</strong></td>
+            <td class="mono">2.0 mg/ml</td>
+            <td class="mono">200 mcg</td>
+            <td class="mono"><strong>10 IU</strong> (0.1 ml)</td>
+          </tr>
+          <tr>
+            <td>Ipamorelin</td>
+            <td class="mono">5 mg</td>
+            <td class="mono"><strong>2.5 ml</strong></td>
+            <td class="mono">2.0 mg/ml</td>
+            <td class="mono">200 mcg</td>
+            <td class="mono"><strong>10 IU</strong> (0.1 ml)</td>
+          </tr>
+          <tr>
+            <td>TB-500</td>
+            <td class="mono">10 mg</td>
+            <td class="mono"><strong>2.0 ml</strong></td>
+            <td class="mono">5.0 mg/ml</td>
+            <td class="mono">2.5 mg</td>
+            <td class="mono"><strong>50 IU</strong> (0.5 ml)</td>
+          </tr>
+          <tr>
+            <td>GHK-Cu</td>
+            <td class="mono">50 mg</td>
+            <td class="mono"><strong>3.0 ml</strong></td>
+            <td class="mono">16.67 mg/ml</td>
+            <td class="mono">1.5 mg</td>
+            <td class="mono"><strong>9 IU</strong> (0.09 ml)</td>
+          </tr>
+          <tr>
+            <td>Semax</td>
+            <td class="mono">10 mg</td>
+            <td class="mono"><strong>3.3 ml</strong></td>
+            <td class="mono">3.0 mg/ml</td>
+            <td class="mono">300 mcg</td>
+            <td>Nasal spray</td>
+          </tr>
+          <tr>
+            <td>Selank</td>
+            <td class="mono">10 mg</td>
+            <td class="mono"><strong>3.3 ml</strong></td>
+            <td class="mono">3.0 mg/ml</td>
+            <td class="mono">300 mcg</td>
+            <td>Nasal spray</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="box tip">
+      <span class="box-icon">&#x1F4A1;</span>
+      <strong>Why these specific amounts?</strong> The bac water volumes are chosen so that each dose equals a round, easy-to-read number on your insulin syringe. BPC-157 at 2 ml means exactly 10 IU per dose. No math needed at 6 AM.
+    </div>
+
+    <div class="box tip">
+      <span class="box-icon">&#x1F4A1;</span>
+      <strong>Reading your insulin syringe:</strong> Your insulin syringe has 100 marks (IU). The full syringe = <span class="mono">1.0 ml</span>. So <span class="mono">10 IU = 0.1 ml</span>, <span class="mono">50 IU = 0.5 ml</span>, <span class="mono">9 IU = 0.09 ml</span>.
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════
+       NASAL SPRAY PREP
+       ═══════════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="section-header">
+      <span class="emoji">&#x1F443;</span>
+      <h2 style="margin-bottom:0">Nasal Spray Prep (Semax &amp; Selank)</h2>
+    </div>
+
+    <p>After reconstituting the Semax and Selank vials (with <span class="mono">3.3 ml</span> bac water each), transfer the liquid into empty nasal spray bottles.</p>
+
+    <ol class="steps purple">
+      <li><span>Using a clean insulin syringe, draw the full contents from the reconstituted vial.</span></li>
+      <li><span>Squirt it into an empty nasal spray bottle. Repeat until the vial is empty and all liquid is transferred.</span></li>
+      <li><span><strong>Prime the spray pump:</strong> Hold upright and pump 2&ndash;3 times until a fine mist appears. Point away from yourself!</span></li>
+      <li><span>Each full pump delivers approximately <span class="mono">0.1 ml</span> = <span class="mono">300 mcg</span> = exactly <strong>1 dose</strong>.</span></li>
+    </ol>
+
+    <div class="table-wrap">
+      <table class="purple">
+        <thead>
+          <tr>
+            <th>Vial</th>
+            <th>Bac Water</th>
+            <th>Per Pump (0.1 ml)</th>
+            <th>Dose</th>
+            <th>Usage</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Semax</td>
+            <td class="mono">3.3 ml</td>
+            <td class="mono">300 mcg</td>
+            <td class="mono">300 mcg</td>
+            <td>1 pump total, alternate nostrils daily</td>
+          </tr>
+          <tr>
+            <td>Selank</td>
+            <td class="mono">3.3 ml</td>
+            <td class="mono">300 mcg</td>
+            <td class="mono">300 mcg</td>
+            <td>1 pump total, alternate nostrils daily</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="box tip">
+      <span class="box-icon">&#x1F4A1;</span>
+      <strong>Storage:</strong> Keep nasal spray bottles upright in the fridge with caps on. Take out, spray, put back. Simple.
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════
+       INJECTION TECHNIQUE
+       ═══════════════════════════════════════════════════ -->
+  <div class="card section-print-break">
+    <div class="section-header">
+      <span class="emoji">&#x1F489;</span>
+      <h2 style="margin-bottom:0">How to Inject (SubQ &mdash; Subcutaneous)</h2>
+    </div>
+
+    <ol class="steps">
+      <li><span>&#x1F9FC; <strong>Wash your hands</strong> with soap and water.</span></li>
+      <li><span>&#x1F9F4; <strong>Swab the vial stopper</strong> with an alcohol swab. Let it dry for 10 seconds.</span></li>
+      <li><span>&#x1F32C;&#xFE0F; <strong>Draw air</strong> into the syringe &mdash; the same amount as your dose (e.g., <span class="mono">10 IU</span> of air for a <span class="mono">10 IU</span> dose). This prevents a vacuum from forming in the vial.</span></li>
+      <li><span>&#x1F4CC; <strong>Push the needle</strong> through the rubber stopper. Push the air into the vial.</span></li>
+      <li><span>&#x1F504; <strong>Turn the vial upside down</strong> (needle still in, syringe pointing up). The liquid should be covering the needle tip.</span></li>
+      <li><span>&#x1F4A7; <strong>Pull back the plunger slowly</strong> to draw your dose. Draw slightly more than you need (e.g., <span class="mono">12 IU</span> instead of <span class="mono">10</span>).</span></li>
+      <li><span>&#x1FAE7; <strong>Tap the syringe gently</strong> with your finger to move any air bubbles to the top. Push the plunger slowly until the bubbles are out and you're at exactly your dose.</span></li>
+      <li><span>&#x1F4E4; <strong>Remove the needle</strong> from the vial.</span></li>
+      <li><span>&#x1F3AF; <strong>Choose your injection site.</strong> Pinch a fold of skin on your abdomen (2+ inches from the belly button). Rotate sites &mdash; use a different position each time (see diagram below).</span></li>
+      <li><span>&#x1F9F4; <strong>Swab the injection site</strong> with alcohol. Let it dry completely (wet alcohol stings).</span></li>
+      <li><span>&#x1F4D0; <strong>Insert the needle at a 45-degree angle</strong> into the pinched skin fold. This is subcutaneous &mdash; you want the fat layer, not the muscle.</span></li>
+      <li><span>&#x1F489; <strong>Push the plunger slowly and steadily.</strong> Takes about 5&ndash;10 seconds. No rush.</span></li>
+      <li><span>&#x23F1;&#xFE0F; <strong>Wait 5 seconds</strong> with the needle still in (lets the liquid disperse).</span></li>
+      <li><span>&#x1F4E4; <strong>Pull the needle out smoothly.</strong> Release the skin fold.</span></li>
+      <li><span>&#x1FA79; If there's a drop of blood, press lightly with the alcohol swab. <strong>Don't rub.</strong></span></li>
+    </ol>
+
+    <hr class="soft">
+
+    <h3>Combining CJC-1295 + Ipamorelin in One Syringe</h3>
+    <p>These two peptides are taken together at bedtime. You can draw both into one syringe for a single injection:</p>
+    <ol class="steps green">
+      <li><span>Swab <strong>both</strong> vial stoppers with alcohol.</span></li>
+      <li><span>Draw <span class="mono">10 IU</span> of air, inject into the CJC-1295 vial, then draw <span class="mono">10 IU</span> of liquid.</span></li>
+      <li><span>Without changing the needle, push into the Ipamorelin vial.</span></li>
+      <li><span>Draw another <span class="mono">10 IU</span> of liquid.</span></li>
+      <li><span>You now have <span class="mono">20 IU</span> total in one syringe &mdash; both peptides combined.</span></li>
+      <li><span><strong>One injection instead of two.</strong> They're fully compatible in the same syringe.</span></li>
+    </ol>
+
+    <div class="box tip">
+      <span class="box-icon">&#x1F4A1;</span>
+      <strong>TB-500 tip:</strong> For TB-500 (<span class="mono">50 IU = 0.5 ml</span>), inject in the <strong>thigh</strong> instead of the abdomen. It's a larger volume, and thigh SubQ is more comfortable for bigger doses.
+    </div>
+
+    <hr class="soft">
+
+    <h3>Site Rotation Diagram</h3>
+    <p class="muted" style="text-align:center;margin-bottom:12px;">Imagine your belly divided into 8 zones around the navel. Move clockwise.</p>
+
+    <div class="rotation-grid">
+      <div class="empty"></div>
+      <div class="zone">1</div>
+      <div class="zone">2</div>
+      <div class="empty"></div>
+      <div class="empty"></div>
+
+      <div class="zone">8</div>
+      <div class="empty"></div>
+      <div class="empty"></div>
+      <div class="zone">3</div>
+      <div class="empty"></div>
+
+      <div class="empty"></div>
+      <div class="empty"></div>
+      <div class="navel">navel</div>
+      <div class="empty"></div>
+      <div class="empty"></div>
+
+      <div class="zone">7</div>
+      <div class="empty"></div>
+      <div class="empty"></div>
+      <div class="zone">4</div>
+      <div class="empty"></div>
+
+      <div class="empty"></div>
+      <div class="zone">6</div>
+      <div class="zone">5</div>
+      <div class="empty"></div>
+      <div class="empty"></div>
+    </div>
+
+    <p class="muted" style="text-align:center;font-size:0.88rem;">Start at zone 1 on Monday morning. Move to zone 2 for the next injection. Keep going clockwise. By the time you're back to zone 1, the tissue has had 3&ndash;4 days to recover.</p>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════
+       DAILY SCHEDULES
+       ═══════════════════════════════════════════════════ -->
+  <div class="card section-print-break">
+    <div class="section-header">
+      <span class="emoji">&#x23F0;</span>
+      <h2 style="margin-bottom:0">Daily Schedules</h2>
+    </div>
+
+    <!-- Schedule A -->
+    <span class="sched-badge sched-a">Schedule A</span>
+    <h3>Home Day &mdash; Weekday (Monday&ndash;Friday)</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>What</th>
+            <th>How</th>
+            <th>Draw</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">06:30</td>
+            <td>Semax</td>
+            <td>1 spray in one nostril</td>
+            <td>Nasal spray</td>
+          </tr>
+          <tr>
+            <td class="mono">06:30</td>
+            <td>Selank</td>
+            <td>1 spray in one nostril</td>
+            <td>Nasal spray</td>
+          </tr>
+          <tr>
+            <td class="mono">07:05</td>
+            <td>BPC-157</td>
+            <td>SubQ injection, abdomen</td>
+            <td class="mono">10 IU</td>
+          </tr>
+          <tr>
+            <td class="mono">17:00</td>
+            <td>BPC-157</td>
+            <td>SubQ injection, abdomen (different site from AM)</td>
+            <td class="mono">10 IU</td>
+          </tr>
+          <tr>
+            <td class="mono">17:00</td>
+            <td>GHK-Cu</td>
+            <td>SubQ injection, abdomen</td>
+            <td class="mono">9 IU</td>
+          </tr>
+          <tr>
+            <td class="mono">17:00</td>
+            <td>TB-500 <em>(see calendar)</em></td>
+            <td>SubQ injection, thigh</td>
+            <td class="mono">50 IU</td>
+          </tr>
+          <tr>
+            <td class="mono">21:30</td>
+            <td>CJC-1295 + Ipamorelin</td>
+            <td>SubQ injection, abdomen. <strong>&ge;60 min after last food.</strong></td>
+            <td class="mono">20 IU combined</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="muted" style="font-size:0.88rem;"><em>The 17:00 injections: draw BPC and GHK-Cu in separate syringes and inject in different spots. TB-500 goes in the thigh (separate syringe). That's 2&ndash;3 pokes at 5 PM on injection days.</em></p>
+
+    <hr class="soft">
+
+    <!-- Schedule B -->
+    <span class="sched-badge sched-b">Schedule B</span>
+    <h3>Home Day &mdash; Weekend (Saturday&ndash;Sunday)</h3>
+    <div class="table-wrap">
+      <table class="green">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>What</th>
+            <th>How</th>
+            <th>Draw</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">07:05</td>
+            <td>BPC-157</td>
+            <td>SubQ injection, abdomen</td>
+            <td class="mono">10 IU</td>
+          </tr>
+          <tr>
+            <td class="mono">17:00</td>
+            <td>BPC-157</td>
+            <td>SubQ injection, abdomen</td>
+            <td class="mono">10 IU</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="muted" style="font-size:0.88rem;">That's it. No CJC/Ipa (receptor sensitivity break). No GHK-Cu. No Semax/Selank. No TB-500. Just BPC-157 twice.</p>
+
+    <hr class="soft">
+
+    <!-- Schedule C -->
+    <span class="sched-badge sched-c">Schedule C</span>
+    <h3>Travel Day &mdash; Weekday</h3>
+    <p>Same as Schedule A, but:</p>
+    <ul style="margin-left:20px;margin-bottom:12px;">
+      <li>Morning injections before you leave (BPC at 06:00&ndash;06:30)</li>
+      <li>Vials travel in cooler bag</li>
+      <li>Afternoon/evening injections at the apartment</li>
+      <li>If no privacy at lunch, shift BPC #1 to before departure and #2 to arrival at the apartment</li>
+    </ul>
+
+    <hr class="soft">
+
+    <!-- First 3 Days -->
+    <div class="box warning">
+      <span class="box-icon">&#x26A0;&#xFE0F;</span>
+      <strong>First 3 Days Only (March 23&ndash;25):</strong> CJC-1295 and Ipamorelin at <strong>half dose</strong>:
+      <br>CJC-1295: <span class="mono">5 IU</span> (0.05 ml) instead of <span class="mono">10 IU</span>
+      <br>Ipamorelin: <span class="mono">5 IU</span> (0.05 ml) instead of <span class="mono">10 IU</span>
+      <br>Combined: <span class="mono">10 IU</span> total instead of <span class="mono">20 IU</span>
+      <br>This is a tolerance test. If you feel fine (no headache, no numbness, no extreme water retention), go to full dose from March 26.
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════
+       TB-500 CALENDAR
+       ═══════════════════════════════════════════════════ -->
+  <div class="card">
+    <div class="section-header">
+      <span class="emoji">&#x1F5D3;&#xFE0F;</span>
+      <h2 style="margin-bottom:0">TB-500 Calendar</h2>
+    </div>
+
+    <h3>Weeks 3&ndash;6: Loading Phase &mdash; Monday + Thursday</h3>
+    <p class="muted" style="font-size:0.88rem;margin-bottom:12px;"><span class="mono">2.5 mg</span> per injection &times; 2 per week = <span class="mono">5 mg/week</span></p>
+
+    <div style="margin-bottom:20px;">
+      <div class="cal-week">
+        <span class="cal-label">Week 3</span>
+        <span class="cal-day">Mon 23 Mar <span class="check">&#x2713;</span></span>
+        <span class="cal-day">Thu 26 Mar <span class="check">&#x2713;</span></span>
+      </div>
+      <div class="cal-week">
+        <span class="cal-label">Week 4</span>
+        <span class="cal-day">Mon 30 Mar <span class="check">&#x2713;</span></span>
+        <span class="cal-day">Thu 2 Apr <span class="check">&#x2713;</span></span>
+      </div>
+      <div class="cal-week">
+        <span class="cal-label">Week 5</span>
+        <span class="cal-day">Mon 7 Apr <span class="check">&#x2713;</span></span>
+        <span class="cal-day">Thu 10 Apr <span class="check">&#x2713;</span></span>
+      </div>
+      <div class="cal-week">
+        <span class="cal-label">Week 6</span>
+        <span class="cal-day">Mon 14 Apr <span class="check">&#x2713;</span></span>
+        <span class="cal-day">Thu 17 Apr <span class="check">&#x2713;</span></span>
+      </div>
+    </div>
+
+    <p class="muted" style="font-size:0.88rem;">8 injections &times; <span class="mono">2.5 mg</span> = <span class="mono">20 mg</span> total (both vials used up during loading)</p>
+
+    <hr class="soft">
+
+    <h3>Weeks 7+ (April 20 onward): Maintenance &mdash; Monday Only</h3>
+    <p><span class="mono">2.5 mg</span> every Monday. One <span class="mono">10 mg</span> vial = 4 Mondays.</p>
+
+    <div class="box warning">
+      <span class="box-icon">&#x26A0;&#xFE0F;</span>
+      You'll need to <strong>order a new TB-500 vial</strong> for the maintenance phase. Loading uses both vials.
+    </div>
+
+    <div class="box tip">
+      <span class="box-icon">&#x1F4A1;</span>
+      <strong>Stop TB-500 entirely after month 3</strong> (~week 14). Connective tissue is adapted by then.
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════
+       STORAGE
+       ═══════════════════════════════════════════════════ -->
+  <div class="card section-print-break">
+    <div class="section-header">
+      <span class="emoji">&#x1F9CA;</span>
+      <h2 style="margin-bottom:0">Storage Guide</h2>
+    </div>
+
+    <h3>At Home</h3>
+    <ul style="margin-left:20px;margin-bottom:16px;">
+      <li>All reconstituted vials: <strong>upright in the fridge, 2&ndash;8&deg;C</strong></li>
+      <li>Keep them together in a small container or ziplock bag so they don't tip over</li>
+      <li>Nasal sprays: upright, cap on, in the fridge</li>
+      <li>Unreconstituted (powder) vials: room temp is fine, but fridge doesn't hurt</li>
+    </ul>
+
+    <h3>&#x1F321;&#xFE0F; Traveling</h3>
+    <ul style="margin-left:20px;margin-bottom:16px;">
+      <li>Small insulated cooler bag + frozen ice pack</li>
+      <li>Wrap vials in a small towel or tissue (prevents clinking and adds insulation)</li>
+      <li>Syringes + alcohol swabs in a separate ziplock</li>
+      <li>At the new apartment: vials go <strong>straight into the fridge</strong></li>
+      <li>No freezer for the ice pack? Put the whole cooler bag in the fridge overnight &mdash; starts cold, stays cold in the bag all next day</li>
+      <li>Thermometer check: inside the bag should be below 15&deg;C after 12 hours. In spring weather, this is easy.</li>
+    </ul>
+
+    <hr class="soft">
+
+    <h3>How Long Each Reconstituted Vial Lasts</h3>
+    <div class="table-wrap">
+      <table class="green">
+        <thead>
+          <tr>
+            <th>Vial</th>
+            <th>Days to Use Up</th>
+            <th>Safe in Fridge?</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>BPC-157 (5 mg)</td>
+            <td class="mono">~10 days</td>
+            <td>Yes &mdash; well within safe window</td>
+          </tr>
+          <tr>
+            <td>CJC-1295 (5 mg)</td>
+            <td class="mono">~5 weeks</td>
+            <td>Yes &mdash; push the limit slightly, keep cold</td>
+          </tr>
+          <tr>
+            <td>Ipamorelin (5 mg)</td>
+            <td class="mono">~5 weeks</td>
+            <td>Yes &mdash; same as CJC</td>
+          </tr>
+          <tr>
+            <td>TB-500 (10 mg)</td>
+            <td class="mono">2&ndash;4 weeks</td>
+            <td>Yes</td>
+          </tr>
+          <tr>
+            <td>GHK-Cu (50 mg)</td>
+            <td class="mono">~6&ndash;7 weeks</td>
+            <td>Borderline &mdash; keep very cold, always swab</td>
+          </tr>
+          <tr>
+            <td>Semax (10 mg)</td>
+            <td class="mono">~6&ndash;7 weeks</td>
+            <td>Short peptide, stable</td>
+          </tr>
+          <tr>
+            <td>Selank (10 mg)</td>
+            <td class="mono">~6&ndash;7 weeks</td>
+            <td>Short peptide, stable</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════
+       QUICK REFERENCE
+       ═══════════════════════════════════════════════════ -->
+  <div class="card section-print-break">
+    <div class="section-header">
+      <span class="emoji">&#x1F3AF;</span>
+      <h2 style="margin-bottom:0">Quick Reference Card</h2>
+    </div>
+
+    <div class="qr-block">
+      <h4>Morning (06:30&ndash;07:05)</h4>
+      <div class="qr-row"><span class="pill pill-green"></span> Semax &mdash; 1 nasal spray <em>(weekdays)</em> <span class="qr-dose">nasal</span></div>
+      <div class="qr-row"><span class="pill pill-green"></span> Selank &mdash; 1 nasal spray <em>(weekdays)</em> <span class="qr-dose">nasal</span></div>
+      <div class="qr-row"><span class="pill pill-blue"></span> BPC-157 &mdash; SubQ abdomen <em>(every day)</em> <span class="qr-dose">10 IU</span></div>
+    </div>
+
+    <div class="qr-block">
+      <h4>Afternoon (17:00)</h4>
+      <div class="qr-row"><span class="pill pill-blue"></span> BPC-157 &mdash; SubQ abdomen <em>(every day)</em> <span class="qr-dose">10 IU</span></div>
+      <div class="qr-row"><span class="pill pill-purple"></span> GHK-Cu &mdash; SubQ abdomen <em>(weekdays)</em> <span class="qr-dose">9 IU</span></div>
+      <div class="qr-row"><span class="pill pill-amber"></span> TB-500 &mdash; SubQ thigh <em>(Mon only; Mon+Thu wks 3&ndash;6)</em> <span class="qr-dose">50 IU</span></div>
+    </div>
+
+    <div class="qr-block">
+      <h4>Bedtime (21:30, &ge;60 min after food)</h4>
+      <div class="qr-row"><span class="pill pill-red"></span> CJC-1295 + Ipamorelin &mdash; SubQ abdomen <em>(weekdays only)</em> <span class="qr-dose">20 IU combined</span></div>
+    </div>
+
+    <hr class="soft">
+
+    <div class="box tip">
+      <span class="box-icon">&#x1F4A1;</span>
+      <strong>Weekends:</strong> BPC-157 only (morning + afternoon). Everything else is off.
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════
+       TROUBLESHOOTING
+       ═══════════════════════════════════════════════════ -->
+  <div class="card section-print-break">
+    <div class="section-header">
+      <span class="emoji">&#x2753;</span>
+      <h2 style="margin-bottom:0">Troubleshooting</h2>
+    </div>
+
+    <div class="faq-item">
+      <p class="faq-q">"The powder won't dissolve!"</p>
+      <p class="faq-a">Be patient. Set it in the fridge for 10&ndash;15 minutes. Some peptides take time. Gently swirl. Never shake &mdash; shaking creates foam and can damage peptides.</p>
+    </div>
+
+    <div class="faq-item">
+      <p class="faq-q">"I see tiny particles floating."</p>
+      <p class="faq-a">If they don't dissolve after 30 minutes of gentle swirling, the vial may be compromised. Don't inject it. Contact the supplier.</p>
+    </div>
+
+    <div class="faq-item">
+      <p class="faq-q">"I forgot my evening CJC/Ipa injection."</p>
+      <p class="faq-a">If it's before midnight, take it. If it's past midnight, skip it and resume tomorrow. Never double-dose.</p>
+    </div>
+
+    <div class="faq-item">
+      <p class="faq-q">"I missed a whole day."</p>
+      <p class="faq-a">Resume your normal schedule tomorrow. No need to double up. One missed day won't affect the protocol.</p>
+    </div>
+
+    <div class="faq-item">
+      <p class="faq-q">"There's blood at the injection site."</p>
+      <p class="faq-a">Totally normal. You nicked a tiny blood vessel. Apply gentle pressure with an alcohol swab for 30 seconds. No big deal.</p>
+    </div>
+
+    <div class="faq-item">
+      <p class="faq-q">"I have a bruise from injecting."</p>
+      <p class="faq-a">Common in the first few weeks. Rotate injection sites more aggressively. It gets better as you improve your technique. Pressing the swab firmly (without rubbing) for 10 seconds after injecting helps prevent bruising.</p>
+    </div>
+
+    <div class="faq-item">
+      <p class="faq-q">"Can I inject BPC-157 and GHK-Cu in the same syringe?"</p>
+      <p class="faq-a">No strong evidence either way. Most people use separate syringes to be safe. They can be injected at the same time, just in different spots (left side and right side of abdomen).</p>
+    </div>
+
+    <div class="faq-item">
+      <p class="faq-q">"I'm nervous about needles."</p>
+      <p class="faq-a">Insulin needles are TINY &mdash; 29&ndash;31 gauge, about 12 mm long. You'll barely feel it. The first time is the hardest. By day 3, it's routine. By day 10, you won't even think about it.</p>
+    </div>
+
+    <div class="faq-item">
+      <p class="faq-q">"How do I travel by plane with peptides?"</p>
+      <p class="faq-a">Keep them in your carry-on (temperature-controlled cabin). Bring your purchase receipt. Peptides with labeled vials and insulin syringes are generally allowed &mdash; they look like regular medication. Put everything in a clear toiletry bag for security.</p>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════════════════════
+       FOOTER
+       ═══════════════════════════════════════════════════ -->
+  <div class="footer">
+    Protocol Guide &mdash; March 2026
+  </div>
+
+</div>
+</body>
+</html>
