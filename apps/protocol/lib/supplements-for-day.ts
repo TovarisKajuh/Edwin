@@ -1,3 +1,5 @@
+import type { Mode } from '@/data/types'
+import { isTravelMode } from '@/data/types'
 import { YOHIMBINE_WORK_CAP } from '@/data/constants'
 import { getYohimbineGymDose } from '@/lib/body-stats'
 import { getProtocolDay, isWeekend } from '@/lib/dates'
@@ -11,8 +13,6 @@ export type TimeSlot =
   | 'with_meal_5'
   | 'late_afternoon'
   | 'pre_bed'
-
-export type Mode = 'home' | 'traveling'
 
 export interface SupplementEntry {
   name: string
@@ -61,10 +61,10 @@ export function getSupplementsForTimeSlot(
   }
 }
 
-// ─── Slot builders ──────────────────────────────────────────────
+// ─── Slot builders ──────────────────────────────────────────────────
 
 function getFastedAm(week: number, mode: Mode): SupplementEntry[] {
-  const yohimbineDose = mode === 'traveling'
+  const yohimbineDose = isTravelMode(mode)
     ? YOHIMBINE_WORK_CAP
     : getYohimbineGymDose(week)
 
@@ -80,7 +80,7 @@ function getMeal1(weekday: boolean, protocolDay: number): SupplementEntry[] {
     { name: 'Omega-3', dose: '4g fish oil', why: 'Anti-inflammatory + isotretinoin lipid management' },
     { name: 'NAC', dose: '600mg', why: 'Liver protection + antioxidant (dose 1 of 2)' },
     { name: 'Creatine', dose: '5g', why: 'Strength maintenance during deficit' },
-    { name: 'Berberine', dose: '500mg', why: 'Blood sugar management (dose 1 of 3)' },
+    // NO berberine — breakfast has only 8g carbs, berberine is wasted
     { name: 'HMB', dose: '1g', why: 'Anti-catabolic protection (dose 1 of 3)' },
   ]
 
@@ -113,10 +113,10 @@ function getPostCardio(): SupplementEntry[] {
 function getMeal3(mode: Mode): SupplementEntry[] {
   const items: SupplementEntry[] = [
     { name: 'HMB', dose: '1g', why: 'Anti-catabolic protection (dose 2 of 3)' },
-    { name: 'Berberine', dose: '500mg', why: 'Blood sugar management (dose 2 of 3)' },
+    { name: 'Berberine', dose: '500mg', why: 'Blood sugar management (with carb meal)' },
   ]
   // Magnesium Citrate on traveling days only (heavy labor increases magnesium depletion)
-  if (mode === 'traveling') {
+  if (isTravelMode(mode)) {
     items.push({ name: 'Magnesium Citrate', dose: '200mg', why: 'Extra magnesium for heavy labor day sweat losses' })
   }
   return items
@@ -125,7 +125,7 @@ function getMeal3(mode: Mode): SupplementEntry[] {
 function getMeal4(): SupplementEntry[] {
   return [
     { name: 'HMB', dose: '1g', why: 'Anti-catabolic protection (dose 3 of 3)' },
-    { name: 'Berberine', dose: '500mg', why: 'Blood sugar management (dose 3 of 3)' },
+    { name: 'Berberine', dose: '500mg', why: 'Blood sugar management (with carb meal)' },
   ]
 }
 

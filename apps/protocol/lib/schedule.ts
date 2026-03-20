@@ -1,45 +1,47 @@
-import type { TrainingDetail } from '@/data/types'
+import type { TrainingDetail, Mode } from '@/data/types'
+import { isTravelMode } from '@/data/types'
 import { TRAINING_DAYS } from '@/data/training'
 import { getProjectedWeight } from '@/lib/progression'
-import { isDeloadWeek } from '@/lib/phase'
 
-/** Map dayOfWeek to the main lift that uses strength projections */
+/** Map training index to the main lift that uses strength projections */
 const MAIN_LIFT_MAP: Record<number, 'bench' | 'squat' | 'deadlift' | 'ohp'> = {
-  1: 'bench',    // Monday — Bench Press
-  2: 'deadlift', // Tuesday — Deadlift
-  3: 'squat',    // Wednesday — Squat
-  5: 'ohp',      // Friday — OHP
+  0: 'bench',    // Push A — Bench Press
+  1: 'deadlift', // Pull — Deadlift
+  2: 'squat',    // Legs — Squat
+  4: 'ohp',      // Push B — OHP
 }
 
+/**
+ * Get training detail for a given workout index (0-4) and mode.
+ * Returns null if workoutIndex is undefined (rest day).
+ */
 export function getTrainingDay(
-  dayOfWeek: number,
-  mode: 'home' | 'traveling',
+  workoutIndex: number | undefined,
+  mode: Mode,
   isDeload: boolean,
   week: number,
 ): TrainingDetail | null {
-  // Saturday (6) and Sunday (7) — rest days
-  if (dayOfWeek === 6 || dayOfWeek === 7) return null
+  if (workoutIndex === undefined || workoutIndex < 0 || workoutIndex > 4) return null
 
-  const template = TRAINING_DAYS.find((t) => t.dayOfWeek === dayOfWeek)
+  const template = TRAINING_DAYS[workoutIndex]
   if (!template) return null
 
-  const sourceExercises = mode === 'traveling' ? template.travelExercises : template.exercises
+  const isTravel = isTravelMode(mode)
+  const sourceExercises = isTravel ? template.travelExercises : template.exercises
 
   const exercises = sourceExercises.map((ex) => {
     let weight = ex.startWeight
     let sets = ex.sets
     const reps = ex.repTarget
 
-    // For the first exercise on days that have a main lift projection,
-    // use projected weight from the strength table
-    const mainLift = MAIN_LIFT_MAP[dayOfWeek]
-    if (mainLift && mode === 'home') {
-      // Match the main lift: first exercise on each day
+    // For the main lift on each training day, use projected weight
+    const mainLift = MAIN_LIFT_MAP[workoutIndex]
+    if (mainLift && !isTravel) {
       const isMainLift =
-        (dayOfWeek === 1 && ex.name === 'Barbell Bench Press') ||
-        (dayOfWeek === 2 && ex.name === 'Conventional Deadlift') ||
-        (dayOfWeek === 3 && ex.name === 'Barbell Back Squat') ||
-        (dayOfWeek === 5 && ex.name === 'Standing OHP')
+        (workoutIndex === 0 && ex.name === 'Barbell Bench Press') ||
+        (workoutIndex === 1 && ex.name === 'Conventional Deadlift') ||
+        (workoutIndex === 2 && ex.name === 'Barbell Back Squat') ||
+        (workoutIndex === 4 && ex.name === 'Standing OHP')
 
       if (isMainLift) {
         const projection = getProjectedWeight(mainLift, week)
@@ -64,10 +66,9 @@ export function getTrainingDay(
   })
 
   const totalSets = exercises.reduce((sum, ex) => sum + ex.sets, 0)
-  const baseMinutes = mode === 'traveling' ? template.travelMinutes : template.estimatedMinutes
-  // Rough scaling: if sets are halved (deload), time scales proportionally
+  const baseMinutes = isTravel ? template.travelMinutes : template.estimatedMinutes
   const estimatedMinutes = isDeload
-    ? Math.round(baseMinutes * (totalSets / (mode === 'traveling' ? template.travelSets : template.totalSets)))
+    ? Math.round(baseMinutes * (totalSets / (isTravel ? template.travelSets : template.totalSets)))
     : baseMinutes
 
   const result: TrainingDetail = {
@@ -83,7 +84,7 @@ export function getTrainingDay(
       'Deload week: sets halved, weight maintained. Focus on recovery and form.'
   }
 
-  if (dayOfWeek === 5) {
+  if (workoutIndex === 4) {
     result.alternativeNote =
       'If fatigued, switch to Full Body: Goblet Squat 2x10, DB Bench 2x10, Cable Row 2x12, DB Lateral Raise 2x15, Pull-ups 3xmax (11 sets, ~35 min).'
   }

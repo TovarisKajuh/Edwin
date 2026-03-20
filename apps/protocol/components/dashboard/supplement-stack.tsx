@@ -32,7 +32,7 @@ export function SupplementStack() {
   const allNames = new Set<string>()
 
   for (const { slot, label } of SLOTS) {
-    const supps = getSupplementsForTimeSlot(slot, week, 'home', dow, now)
+    const supps = getSupplementsForTimeSlot(slot, week, 'home_workout', dow, now)
     if (supps.length > 0) {
       slotData.push({ label, supplements: supps })
       for (const s of supps) {

@@ -1,11 +1,13 @@
 'use client'
 
 import { useMode } from '@/hooks/use-mode'
+import { useWorkoutSequence } from '@/hooks/use-workout-sequence'
 import { ModeToggle } from '@/components/mode-toggle'
 import { DayTimeline } from '@/components/day-timeline'
 import { getWeekNumber, parseDate, getDayOfWeek } from '@/lib/dates'
 import { getPhase, getEffectiveCalories } from '@/lib/phase'
 import { getEstimatedWeight, getEstimatedBf } from '@/lib/body-stats'
+import { isWorkoutMode } from '@/data/types'
 import Link from 'next/link'
 
 interface DayPageClientProps {
@@ -17,6 +19,9 @@ export function DayPageClient({ dateStr }: DayPageClientProps) {
   const week = getWeekNumber(date)
   const [mode, setMode] = useMode(dateStr)
   const phase = getPhase(week)
+  const { index: workoutIndex, workoutName } = useWorkoutSequence()
+
+  const isWorkout = isWorkoutMode(mode)
 
   return (
     <main className="min-h-screen">
@@ -46,8 +51,11 @@ export function DayPageClient({ dateStr }: DayPageClientProps) {
           <span className="font-mono">~{getEstimatedWeight(week)}kg</span>
           <span className="font-mono">{getEstimatedBf(week)}% BF</span>
           <span className="font-mono">{getEffectiveCalories(week, getDayOfWeek(date))} kcal</span>
+          {isWorkout && (
+            <span className="font-semibold text-[#6b8aff]">{workoutName}</span>
+          )}
         </div>
-        <DayTimeline date={date} mode={mode} />
+        <DayTimeline date={date} mode={mode} workoutIndex={isWorkout ? workoutIndex : undefined} />
       </div>
     </main>
   )

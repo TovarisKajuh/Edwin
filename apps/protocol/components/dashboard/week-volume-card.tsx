@@ -6,7 +6,7 @@ import { getTrainingDay } from '@/lib/schedule'
 import { isDeloadWeek } from '@/lib/phase'
 import { PROTOCOL_START_WEEK, PROTOCOL_END_WEEK } from '@/data/constants'
 
-const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+const WORKOUT_LABELS = ['Push', 'Pull', 'Legs', 'Looks', 'PushB']
 
 export function WeekVolumeCard() {
   const now = new Date()
@@ -18,22 +18,22 @@ export function WeekVolumeCard() {
 
   const deload = isDeloadWeek(week)
 
-  // Get sets per day (Mon=1..Sun=7)
-  const daySets: number[] = []
-  for (let dow = 1; dow <= 7; dow++) {
-    const training = getTrainingDay(dow, 'home', deload, week)
-    daySets.push(training ? training.totalSets : 0)
+  // Get sets per workout (index 0-4)
+  const workoutSets: number[] = []
+  for (let idx = 0; idx < 5; idx++) {
+    const training = getTrainingDay(idx, 'home_workout', deload, week)
+    workoutSets.push(training ? training.totalSets : 0)
   }
 
-  const totalSets = daySets.reduce((sum, s) => sum + s, 0)
-  const maxSets = Math.max(...daySets, 1)
+  const totalSets = workoutSets.reduce((sum, s) => sum + s, 0)
+  const maxSets = Math.max(...workoutSets, 1)
 
   // Chart dimensions
   const chartWidth = 340
   const chartHeight = 160
-  const barWidth = 30
-  const gap = 12
-  const totalBarsWidth = 7 * barWidth + 6 * gap
+  const barWidth = 44
+  const gap = 14
+  const totalBarsWidth = 5 * barWidth + 4 * gap
   const startX = (chartWidth - totalBarsWidth) / 2
   const padTop = 24
   const padBottom = 24
@@ -63,7 +63,7 @@ export function WeekVolumeCard() {
       {/* Bar chart */}
       <div className="rounded-xl bg-[#0f1020] p-3 -mx-1">
         <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full" preserveAspectRatio="xMidYMid meet">
-          {daySets.map((sets, i) => {
+          {workoutSets.map((sets, i) => {
             const x = startX + i * (barWidth + gap)
             const barH = sets > 0 ? (sets / maxSets) * plotH : 0
             const y = padTop + plotH - barH
@@ -82,19 +82,7 @@ export function WeekVolumeCard() {
                     opacity={sets === maxSets ? 1 : 0.7}
                   />
                 )}
-                {/* Rest day placeholder */}
-                {sets === 0 && (
-                  <rect
-                    x={x}
-                    y={padTop + plotH - 3}
-                    width={barWidth}
-                    height={3}
-                    rx={1.5}
-                    fill="#45465a"
-                    opacity={0.4}
-                  />
-                )}
-                {/* Set count above bar (for top bars) */}
+                {/* Set count above bar */}
                 {sets > 0 && (
                   <text
                     x={x + barWidth / 2}
@@ -107,7 +95,7 @@ export function WeekVolumeCard() {
                     {sets}
                   </text>
                 )}
-                {/* Day label */}
+                {/* Workout label */}
                 <text
                   x={x + barWidth / 2}
                   y={chartHeight - 4}
@@ -115,7 +103,7 @@ export function WeekVolumeCard() {
                   fill="#45465a"
                   fontSize="11"
                 >
-                  {DAY_LABELS[i]}
+                  {WORKOUT_LABELS[i]}
                 </text>
               </g>
             )

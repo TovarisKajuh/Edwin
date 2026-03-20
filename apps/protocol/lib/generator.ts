@@ -1,5 +1,6 @@
 import type { Mode, TimeBlock, Explanation, MealDetail, TrainingDetail, Category } from '@/data/types'
-import { MEAL_SLOTS_HOME, MEAL_SLOTS_TRAVEL, getMealMacros, getWeeklyCostNote } from '@/data/meals'
+import { isWorkoutMode, isTravelMode } from '@/data/types'
+import { getModeTemplate, getMealMacros, selectMealVariation, getWeeklyCostNote } from '@/data/meals'
 import { SKINCARE_AM, SKINCARE_PM, BLEACH_BATH } from '@/data/skincare'
 import { DAILY_CHECKS, BLOODWORK_PANELS } from '@/data/monitoring'
 import { getCardioSession } from '@/data/cardio'
@@ -40,7 +41,7 @@ function compoundLookup(name: string) {
 
 // ─── Core Generator ─────────────────────────────────────────────
 
-export function generateDay(date: Date, mode: Mode): TimeBlock[] {
+export function generateDay(date: Date, mode: Mode, workoutIndex?: number): TimeBlock[] {
   // 1. Determine context
   const week = getWeekNumber(date)
   const phase = getPhase(week)
@@ -48,7 +49,6 @@ export function generateDay(date: Date, mode: Mode): TimeBlock[] {
   const protocolDay = getProtocolDay(date)
   const weekend = isWeekendFn(date)
   const isSunday = dayOfWeek === 7
-  const isSaturday = dayOfWeek === 6
   const weekday = !weekend
   const deload = isDeloadWeek(week)
   const dietBreak = isDietBreakWeek(week)
@@ -58,11 +58,14 @@ export function generateDay(date: Date, mode: Mode): TimeBlock[] {
   const estBf = getEstimatedBf(week)
   const effectiveCals = getEffectiveCalories(week, dayOfWeek)
 
+  const isWorkout = isWorkoutMode(mode)
+  const isTravel = isTravelMode(mode)
+  const zincDay = protocolDay % 2 === 1
+
   const phaseContext = `Week ${week}, ${phase.name} phase. ~${estWeight}kg / ~${estBf}% BF. Target ${effectiveCals}kcal.`
 
   const blocks: TimeBlock[] = []
 
-  // Helper to find an Edwin note for a block
   function edwinNote(category: string): string | undefined {
     return getEdwinNote(week, dayOfWeek, category)
   }
@@ -145,11 +148,10 @@ export function generateDay(date: Date, mode: Mode): TimeBlock[] {
 
     const yohDose = yohEntry?.dose ?? '5mg'
     const scheduledDose = YOHIMBINE_GYM_DOSE[week] ?? 5
-    const safetyCap = Math.floor(estWeight * YOHIMBINE_SAFETY_MG_PER_KG)
-    const actualDose = mode === 'traveling' ? YOHIMBINE_WORK_CAP : getYohimbineGymDose(week)
+    const actualDose = isTravel ? YOHIMBINE_WORK_CAP : getYohimbineGymDose(week)
 
     let yohDoseDetail: string
-    if (mode === 'traveling') {
+    if (isTravel) {
       yohDoseDetail = `Yohimbine ${yohDose} (traveling cap: 5mg absolute — elevated HR + heights + heat)`
     } else if (actualDose < scheduledDose) {
       yohDoseDetail = `Yohimbine ${yohDose} (scheduled ${scheduledDose}mg, capped at ${actualDose}mg for ${estWeight}kg x 0.2mg/kg safety ceiling)`
@@ -202,12 +204,11 @@ export function generateDay(date: Date, mode: Mode): TimeBlock[] {
   {
     const cardio = getCardioSession(week, mode)
     const durationStr = `${cardio.durationMin[0]}-${cardio.durationMin[1]}min`
-    const cardioTime = mode === 'traveling' ? '06:15' : '06:30'
-    const cardioEndTime = mode === 'traveling' ? '06:35' : '07:05'
-    const cardioTitle =
-      mode === 'traveling'
-        ? `Fasted Zone 2 Cardio — ${durationStr} (abbreviated or skip)`
-        : `Fasted Zone 2 Cardio — ${durationStr}`
+    const cardioTime = isTravel ? '06:15' : '06:30'
+    const cardioEndTime = isTravel ? '06:35' : '07:05'
+    const cardioTitle = isTravel
+      ? `Fasted Zone 2 Cardio — ${durationStr} (abbreviated or skip)`
+      : `Fasted Zone 2 Cardio — ${durationStr}`
 
     blocks.push({
       id: makeId(date, cardioTime, 'cardio'),
@@ -252,63 +253,133 @@ export function generateDay(date: Date, mode: Mode): TimeBlock[] {
   }
 
   // ─── Meal blocks ──────────────────────────────────────────────
-  const slots = mode === 'home' ? MEAL_SLOTS_HOME : MEAL_SLOTS_TRAVEL
-  const mealTimings = mode === 'home'
-    ? ['07:15', '10:00', '12:15', '15:30', '19:00', '21:00']
-    : ['06:30', '10:00', '13:00', '15:30', '19:00', '21:00']
+  const template = getModeTemplate(mode)
 
-  for (let i = 0; i < slots.length; i++) {
-    const slot = slots[i]
-    const macros = getMealMacros(i, week, mode, refeedSat, dietBreak)
-    const mealTime = mealTimings[i]
-    const nextTime = i < mealTimings.length - 1 ? mealTimings[i + 1] : '21:15'
+  for (let i = 0; i < template.length; i++) {
+    const slotTarget = template[i]
+    const macros = getMealMacros(slotTarget, week, mode, refeedSat, dietBreak)
+    const mealTime = slotTarget.time
+    const nextTime = i < template.length - 1 ? template[i + 1].time : '20:30'
 
-    // Get supplements for this meal
-    const mealSlotMap: Record<number, 'with_meal_1' | 'with_meal_3' | 'with_meal_4' | 'with_meal_5'> = {
-      0: 'with_meal_1',
-      2: 'with_meal_3',
-      3: 'with_meal_4',
-      4: 'with_meal_5',
+    // Determine variation slot type for selection
+    let variationSlot: string
+    if (slotTarget.isIsotretinoinMeal) {
+      variationSlot = 'breakfast'
+    } else if (slotTarget.isPostWorkout) {
+      variationSlot = 'dinner'
+    } else if (slotTarget.isPreWorkout) {
+      variationSlot = 'lunch'
+    } else if (slotTarget.slotName === 'Pre-Bed') {
+      variationSlot = 'pre_bed'
+    } else if (slotTarget.slotName === 'Snack' || slotTarget.slotName === 'Work Snack') {
+      variationSlot = 'snack'
+    } else if (slotTarget.slotName === 'Dinner' || slotTarget.slotName === 'Lunch' || slotTarget.slotName === 'Work Lunch') {
+      // Rest day lunch/dinner or travel work lunch — use lunch or dinner variations
+      if (slotTarget.slotName === 'Dinner') {
+        variationSlot = 'dinner'
+      } else {
+        variationSlot = 'lunch'
+      }
+    } else {
+      variationSlot = 'snack'
     }
-    const suppSlot = mealSlotMap[i]
-    const mealSupps = suppSlot
-      ? getSupplementsForTimeSlot(suppSlot, week, mode, dayOfWeek, date)
-      : []
 
-    // Weekend: filter out Enclomiphene from meal 1
-    // (already handled by getSupplementsForTimeSlot which checks weekday)
+    const variation = selectMealVariation(variationSlot, protocolDay, zincDay)
 
-    let mealNotes = mode === 'home' ? slot.notes : slot.notesTravel
+    // Build supplements for this meal
+    // Determine which supplement slot this corresponds to
+    let mealSupps: { name: string; dose: string; why: string }[] = []
+    if (i === 0) {
+      // First meal = breakfast = with_meal_1
+      const supps = getSupplementsForTimeSlot('with_meal_1', week, mode, dayOfWeek, date)
+      mealSupps = supps.map((s) => ({ name: s.name, dose: s.dose, why: s.why }))
+    } else if (slotTarget.slotName === 'Pre-Bed') {
+      // Pre-bed supplements are handled in separate blocks
+      mealSupps = []
+    } else {
+      // For other meals: check if berberine should be added (carbs > 25g)
+      const baseMealSupps: { name: string; dose: string; why: string }[] = []
+
+      // HMB with protein meals (up to 3 doses per day)
+      // Dose 1 is with breakfast, doses 2 & 3 with later meals
+      if (i === 1 || i === 2) {
+        baseMealSupps.push({ name: 'HMB', dose: '1g', why: `Anti-catabolic protection (dose ${i + 1} of 3)` })
+      } else if (i === 3 && template.length >= 5) {
+        baseMealSupps.push({ name: 'HMB', dose: '1g', why: 'Anti-catabolic protection (dose 3 of 3)' })
+      }
+
+      // Berberine ONLY with meals that have >25g carbs
+      if (macros.carbs > 25) {
+        baseMealSupps.push({ name: 'Berberine', dose: '500mg', why: 'AMPK activation — glucose partitioning to muscle (carb meal)' })
+      }
+
+      // NAC dose 2 with dinner (the last main meal before pre-bed)
+      const isLastMainMeal = i === template.length - 2 // second to last (before pre-bed)
+      if (isLastMainMeal) {
+        baseMealSupps.push({ name: 'NAC', dose: '600mg', why: 'Liver protection + antioxidant (dose 2 of 2)' })
+      }
+
+      // Mag citrate on travel days with a mid-day meal
+      if (isTravel && (i === 1 || i === 2)) {
+        baseMealSupps.push({ name: 'Magnesium Citrate', dose: '200mg', why: 'Extra magnesium for labor day sweat losses' })
+      }
+
+      mealSupps = baseMealSupps
+    }
+
+    // Build meal notes
+    let mealNotes = slotTarget.notes
     if (dietBreak) mealNotes += ' [DIET BREAK — maintenance calories]'
     if (refeedSat) mealNotes += ' [REFEED — extra carbs from leptin protocol]'
-    if (mode === 'traveling' && i >= 1 && i <= 3) mealNotes += ' + electrolytes (sodium/potassium from lite salt)'
+    if (isTravel && i >= 1 && i <= 3) mealNotes += ' + electrolytes (sodium/potassium from lite salt)'
 
-    const isotoNote = slot.isIsotretinoinMeal ? ' (ISOTRETINOIN MEAL)' : ''
-    const optionalNote = slot.name === 'Pre-bed' ? ' (optional)' : ''
-    const title = `${slot.name} — ${slot.notes.split(' — ')[0]}${isotoNote} ~${macros.calories}cal${optionalNote}`
+    // Build title with variation name
+    const variationLabel = `${variation.id}: ${variation.name}`
+    const isotoNote = slotTarget.isIsotretinoinMeal ? ' (Isotretinoin)' : ''
+    const glut4Note = slotTarget.isPostWorkout ? ' GLUT4 Feast' : ''
+    const optionalNote = slotTarget.slotName === 'Pre-Bed' ? ' (optional)' : ''
+    const title = `${variationLabel} — ${slotTarget.slotName}${isotoNote}${glut4Note} ~${macros.calories}kcal${optionalNote}`
 
-    const exampleMeals = mode === 'home' ? slot.exampleMeals : slot.exampleMealsTravel
+    // Build ingredient list as example meals
+    const ingredientList = variation.ingredients.map(
+      (ing) => `${ing.amount} ${ing.name} (P${ing.protein}/F${ing.fat}/C${ing.carbs})`
+    )
 
     const mealDetail: MealDetail = {
       calories: macros.calories,
       protein: macros.protein,
       fat: macros.fat,
       carbs: macros.carbs,
-      exampleMeals,
-      supplementsWithMeal: mealSupps.map((s) => ({ name: s.name, dose: s.dose, why: s.why })),
-      isIsotretinoinMeal: slot.isIsotretinoinMeal,
+      exampleMeals: ingredientList,
+      supplementsWithMeal: mealSupps,
+      isIsotretinoinMeal: slotTarget.isIsotretinoinMeal,
     }
 
     if (dietBreak) {
       mealDetail.costNote = 'Diet break week — maintenance calories for metabolic recovery.'
     } else if (isSunday && i === 0) {
-      // Sunday meal 1: weekly cost note + meal prep reminder
       mealDetail.costNote = getWeeklyCostNote(week) + ' 2 hours of prep today eliminates 7 days of decisions.'
     }
 
     let mealWarning: string | undefined
-    if (slot.isIsotretinoinMeal) {
+    if (slotTarget.isIsotretinoinMeal) {
       mealWarning = 'This meal MUST contain 40-50g fat for isotretinoin absorption. Without adequate fat, oral bioavailability drops 40-50%.'
+    }
+
+    // Build explanation
+    let mechanism: string
+    if (slotTarget.isIsotretinoinMeal) {
+      mechanism = 'Isotretinoin is fat-soluble. Without 40-50g dietary fat in the same meal, oral bioavailability drops by 40-50%. The high-fat breakfast is structured specifically to maximize absorption.'
+    } else if (slotTarget.isPostWorkout) {
+      mechanism = 'GLUT4 transporters are at the muscle cell surface after training. 60-75% of daily carbs concentrated in this meal. Glucose goes to muscle, not fat. Walk 5-10 min after to extend GLUT4 activation.'
+    } else if (slotTarget.isPreWorkout) {
+      mechanism = 'Glucose-based carbs to fuel the training session. Berberine activates AMPK for better glucose uptake. Low fat to speed digestion before training.'
+    } else if (slotTarget.slotName === 'Pre-Bed') {
+      mechanism = 'Slow-digesting protein (casein/cottage cheese) provides sustained amino acid supply during 8 hours of sleep. 40g casein before sleep increases overnight MPS by ~22%. Must be at 20:15 — 75 min before CJC/Ipa at 21:30.'
+    } else if (!isWorkout && macros.carbs > 25) {
+      mechanism = 'Rest day moderate carbs with berberine and a post-meal walk for partial GLUT4 activation. No training advantage, but walking + berberine still improves glucose partitioning.'
+    } else {
+      mechanism = 'Protein for MPS stimulation. Minimal carbs — no GLUT4 advantage without training or walking.'
     }
 
     blocks.push({
@@ -318,13 +389,10 @@ export function generateDay(date: Date, mode: Mode): TimeBlock[] {
       title,
       category: 'nutrition',
       explanation: makeExplanation({
-        what: `${slot.name}: ${macros.protein}g protein, ${macros.fat}g fat, ${macros.carbs}g carbs = ${macros.calories}kcal. ${mealNotes}`,
+        what: `${variation.name}: ${variation.ingredients.map(ing => `${ing.amount} ${ing.name}`).join(', ')}. ${macros.protein}g protein, ${macros.fat}g fat, ${macros.carbs}g carbs = ${macros.calories}kcal. ${mealNotes}`,
         doseToday: `${macros.calories}kcal (P${macros.protein}/F${macros.fat}/C${macros.carbs})${mealSupps.length > 0 ? ' + ' + mealSupps.map((s) => `${s.name} ${s.dose}`).join(', ') : ''}`,
         whyToday: phaseContext,
-        mechanism:
-          slot.isIsotretinoinMeal
-            ? 'Isotretinoin is fat-soluble. Without 40-50g dietary fat in the same meal, oral bioavailability drops by 40-50%. The high-fat breakfast is structured specifically to maximize absorption.'
-            : `Meal timing supports training performance and recovery. Protein target: 195g/day distributed across 5-6 meals for maximum muscle protein synthesis stimulation.`,
+        mechanism,
         phaseNote: dietBreak
           ? 'Diet break: maintenance calories to restore leptin, thyroid, and glycogen.'
           : refeedSat
@@ -335,21 +403,69 @@ export function generateDay(date: Date, mode: Mode): TimeBlock[] {
       warning: mealWarning,
       mealDetail,
     })
+
+    // ─── Walking block after post-WO meal ──────────────────────
+    if (slotTarget.isPostWorkout) {
+      const walkTime = mealTime.replace(/:(\d\d)$/, (_, min) => {
+        const newMin = parseInt(min) + 15
+        return `:${String(newMin).padStart(2, '0')}`
+      })
+      blocks.push({
+        id: makeId(date, walkTime, 'cardio', 10 + i),
+        time: walkTime,
+        endTime: walkTime.replace(/:(\d\d)$/, (_, min) => {
+          const newMin = parseInt(min) + 10
+          return `:${String(newMin).padStart(2, '0')}`
+        }),
+        title: 'Walk 5-10 min — GLUT4 activation',
+        category: 'cardio',
+        explanation: makeExplanation({
+          what: 'Casual walk after the high-carb meal. Muscle contraction from walking activates GLUT4 in leg muscles, extending glucose-to-muscle bias.',
+          doseToday: '5-10 min walk',
+          whyToday: phaseContext,
+          mechanism: 'Walking activates GLUT4 transporters in leg muscles (the largest muscle group). This provides preferential glucose uptake toward muscle even as the post-workout GLUT4 window closes.',
+          phaseNote: '',
+        }),
+      })
+    }
+
+    // ─── Walking block after rest-day carb meals (>25g carbs) ──
+    if (!isWorkout && !slotTarget.isIsotretinoinMeal && macros.carbs > 25 && slotTarget.slotName !== 'Pre-Bed') {
+      const walkMin = parseInt(mealTime.split(':')[1]) + 15
+      const walkHour = parseInt(mealTime.split(':')[0]) + Math.floor(walkMin / 60)
+      const walkMinFinal = walkMin % 60
+      const walkTimeStr = `${String(walkHour).padStart(2, '0')}:${String(walkMinFinal).padStart(2, '0')}`
+
+      blocks.push({
+        id: makeId(date, walkTimeStr, 'cardio', 20 + i),
+        time: walkTimeStr,
+        endTime: `${String(walkHour).padStart(2, '0')}:${String(walkMinFinal + 10).padStart(2, '0')}`,
+        title: 'Walk 10 min — partial GLUT4 activation',
+        category: 'cardio',
+        explanation: makeExplanation({
+          what: 'Walk after carb-containing rest day meal. No training GLUT4 advantage, but walking provides partial activation.',
+          doseToday: '10 min walk',
+          whyToday: phaseContext,
+          mechanism: 'On rest days, walking after carb meals is especially important since there is no training-induced GLUT4 advantage. Walking provides at least some preferential glucose uptake toward muscle.',
+          phaseNote: '',
+        }),
+      })
+    }
   }
 
-  // ─── 10:30 Training (weekdays only) ──────────────────────────
-  if (weekday) {
-    const trainingDetail = getTrainingDay(dayOfWeek, mode, deload, week)
+  // ─── Training block (workout modes only) ──────────────────────
+  if (isWorkout && workoutIndex !== undefined) {
+    const trainingDetail = getTrainingDay(workoutIndex, mode, deload, week)
 
     if (trainingDetail) {
-      const trainingTime = mode === 'traveling' ? '18:00' : '10:30'
-      const trainingEndTime = mode === 'traveling'
+      const trainingTime = isTravel ? '18:00' : '10:30'
+      const trainingEndTime = isTravel
         ? `${18 + Math.ceil(trainingDetail.estimatedMinutes / 60)}:${String(trainingDetail.estimatedMinutes % 60).padStart(2, '0')}`
         : '12:00'
 
       let trainingTitle = `${trainingDetail.dayName} Day — ${trainingDetail.muscles}`
       if (deload) trainingTitle += ' [DELOAD]'
-      if (mode === 'traveling') trainingTitle += ' (abbreviated)'
+      if (isTravel) trainingTitle += ' (abbreviated)'
 
       blocks.push({
         id: makeId(date, trainingTime, 'training'),
@@ -491,14 +607,14 @@ export function generateDay(date: Date, mode: Mode): TimeBlock[] {
         title: `CJC-1295 ${cjcEntry?.dose ?? '200mcg'} + Ipamorelin ${ipaEntry?.dose ?? '200mcg'}`,
         category: 'peptides',
         explanation: makeExplanation({
-          what: `Inject CJC-1295 no DAC ${cjcEntry?.dose} and Ipamorelin ${ipaEntry?.dose} SubQ. Same syringe. Must be >=60 minutes after last food.`,
+          what: `Inject CJC-1295 no DAC ${cjcEntry?.dose} and Ipamorelin ${ipaEntry?.dose} SubQ. Same syringe. Must be >=60 minutes after last food (pre-bed at 20:15 = 75 min gap).`,
           doseToday: `CJC-1295 ${cjcEntry?.dose} + Ipamorelin ${ipaEntry?.dose}${isHalfDose ? ' (half dose — tolerance assessment, first 3 days)' : ''}`,
           whyToday: phaseContext,
           mechanism: `${cjcCompound?.mechanism ?? ''} ${ipaCompound?.mechanism ?? ''}`,
           phaseNote: cjcCompound?.whyInProtocol ?? '',
         }),
         edwinNote: edwinNote('peptides'),
-        warning: 'Must be >=60 minutes after last food. Insulin suppresses GH release. Weekdays only for receptor sensitivity recovery.',
+        warning: 'Must be >=60 minutes after last food. Pre-bed protein at 20:15 provides 75 min gap. Insulin suppresses GH release. Weekdays only for receptor sensitivity recovery.',
       })
     }
   }
@@ -547,7 +663,6 @@ export function generateDay(date: Date, mode: Mode): TimeBlock[] {
   blocks.sort((a, b) => {
     if (a.time < b.time) return -1
     if (a.time > b.time) return 1
-    // Same time: maintain insertion order via category priority
     const priority: Record<Category, number> = {
       monitoring: 0,
       supplements: 1,

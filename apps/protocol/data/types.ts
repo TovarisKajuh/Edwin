@@ -1,4 +1,31 @@
-export type Mode = 'home' | 'traveling'
+export type Mode = 'home_workout' | 'travel_workout' | 'home_rest' | 'travel_rest'
+
+export function isWorkoutMode(mode: Mode): boolean {
+  return mode === 'home_workout' || mode === 'travel_workout'
+}
+
+export function isTravelMode(mode: Mode): boolean {
+  return mode === 'travel_workout' || mode === 'travel_rest'
+}
+
+export interface MealVariation {
+  id: string
+  name: string
+  slot: string
+  ingredients: { name: string; amount: string; protein: number; fat: number; carbs: number }[]
+  totalProtein: number
+  totalFat: number
+  totalCarbs: number
+  totalKcal: number
+  prepTime: string
+  mealPrep: boolean
+  travelFriendly: boolean
+  zincDayCompatible: boolean
+  phaseScaling?: string
+  supplements: string[]
+  berberine: boolean
+  notes: string
+}
 
 export type Category =
   | 'training'

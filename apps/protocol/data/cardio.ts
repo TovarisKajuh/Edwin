@@ -1,4 +1,5 @@
 import type { Mode } from './types'
+import { isTravelMode } from './types'
 import { PHASES } from './phases'
 
 export interface CardioSession {
@@ -22,22 +23,21 @@ const STACK_EXPLANATION =
 
 export function getCardioSession(week: number, mode: Mode): CardioSession {
   const phase = getPhaseForWeek(week)
+  const isTravel = isTravelMode(mode)
   const durationMin: [number, number] =
-    mode === 'home' ? [...phase.cardioMinGym] : [...phase.cardioMinWork]
+    isTravel ? [...phase.cardioMinWork] : [...phase.cardioMinGym]
 
-  const modality =
-    mode === 'home'
-      ? 'Incline treadmill walk (preferred), stationary bike, or light jog'
-      : 'Brisk walk or skip'
+  const modality = isTravel
+    ? 'Brisk walk or skip'
+    : 'Incline treadmill walk (preferred), stationary bike, or light jog'
 
-  const explanation =
-    mode === 'home'
-      ? `${durationMin[0]}-${durationMin[1]} minutes of steady-state cardio in heart rate zone 2. ` +
-        'Performed fasted with yohimbine to maximize stubborn fat oxidation. ' +
-        'Keep intensity low enough to hold a conversation — fat oxidation drops sharply above zone 2.'
-      : `${durationMin[0]}-${durationMin[1]} minutes on travel days. ` +
-        'Physical labor already provides significant caloric expenditure. ' +
-        'This session is supplementary — skip if total daily steps exceed 15,000.'
+  const explanation = isTravel
+    ? `${durationMin[0]}-${durationMin[1]} minutes on travel days. ` +
+      'Physical labor already provides significant caloric expenditure. ' +
+      'This session is supplementary — skip if total daily steps exceed 15,000.'
+    : `${durationMin[0]}-${durationMin[1]} minutes of steady-state cardio in heart rate zone 2. ` +
+      'Performed fasted with yohimbine to maximize stubborn fat oxidation. ' +
+      'Keep intensity low enough to hold a conversation — fat oxidation drops sharply above zone 2.'
 
   return {
     durationMin,

@@ -1,15 +1,35 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { DashboardCard } from './dashboard-card'
 import { getWeekNumber, getDayOfWeek, formatDate } from '@/lib/dates'
 import { getTrainingDay } from '@/lib/schedule'
 import { getPhase, isDeloadWeek } from '@/lib/phase'
 import { PROTOCOL_START_WEEK, PROTOCOL_END_WEEK } from '@/data/constants'
+import type { Mode } from '@/data/types'
+import { isWorkoutMode, isTravelMode } from '@/data/types'
+
+const MODE_OPTIONS: { value: Mode; label: string }[] = [
+  { value: 'home_workout', label: 'Home' },
+  { value: 'home_rest', label: 'Rest' },
+  { value: 'travel_workout', label: 'Travel' },
+  { value: 'travel_rest', label: 'T.Rest' },
+]
 
 export function TodaysTraining() {
-  const [mode, setMode] = useState<'home' | 'traveling'>('home')
+  const [mode, setMode] = useState<Mode>('home_workout')
+  const [workoutIndex, setWorkoutIndex] = useState(0)
+
+  useEffect(() => {
+    const storedIndex = localStorage.getItem('protocol-workout-index')
+    if (storedIndex !== null) {
+      const parsed = parseInt(storedIndex, 10)
+      if (!isNaN(parsed) && parsed >= 0 && parsed <= 4) {
+        setWorkoutIndex(parsed)
+      }
+    }
+  }, [])
 
   const now = new Date()
   const rawWeek = getWeekNumber(now)
@@ -18,9 +38,9 @@ export function TodaysTraining() {
       ? rawWeek
       : PROTOCOL_START_WEEK
 
-  const dow = getDayOfWeek(now)
   const deload = isDeloadWeek(week)
-  const training = getTrainingDay(dow, mode, deload, week)
+  const isWorkout = isWorkoutMode(mode)
+  const training = isWorkout ? getTrainingDay(workoutIndex, mode, deload, week) : null
   const phase = getPhase(week)
   const todayStr = formatDate(now)
 
@@ -34,19 +54,18 @@ export function TodaysTraining() {
               DELOAD
             </span>
           )}
-          <div className="inline-flex rounded-full bg-[#0f1020] p-0.5">
-            <button
-              className={`px-3 py-1 rounded-full text-[11px] font-medium transition-all duration-200 ${mode === 'home' ? 'bg-white text-[#0b0d19]' : 'text-[#7a7b90]'}`}
-              onClick={() => setMode('home')}
-            >
-              Home
-            </button>
-            <button
-              className={`px-3 py-1 rounded-full text-[11px] font-medium transition-all duration-200 ${mode === 'traveling' ? 'bg-white text-[#0b0d19]' : 'text-[#7a7b90]'}`}
-              onClick={() => setMode('traveling')}
-            >
-              Travel
-            </button>
+          <div className="inline-grid grid-cols-2 gap-0.5 rounded-xl bg-[#0f1020] p-0.5">
+            {MODE_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                className={`px-2 py-1 rounded-lg text-[10px] font-medium transition-all duration-200 ${
+                  mode === opt.value ? 'bg-white text-[#0b0d19]' : 'text-[#7a7b90]'
+                }`}
+                onClick={() => setMode(opt.value)}
+              >
+                {opt.label}
+              </button>
+            ))}
           </div>
         </div>
       }

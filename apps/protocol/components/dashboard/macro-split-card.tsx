@@ -1,11 +1,23 @@
 'use client'
 
+import { useState } from 'react'
 import { DashboardCard } from './dashboard-card'
 import { getWeekNumber, getDayOfWeek } from '@/lib/dates'
 import { getPhase, getEffectiveCalories } from '@/lib/phase'
 import { PROTOCOL_START_WEEK, PROTOCOL_END_WEEK } from '@/data/constants'
+import { getModeTemplate } from '@/data/meals'
+import type { Mode } from '@/data/types'
+
+const MODE_MACROS: Record<Mode, { label: string; protein: number; fat: number; carbs: number }> = {
+  home_workout: { label: 'Home WO', protein: 195, fat: 70, carbs: 182 },
+  travel_workout: { label: 'Travel WO', protein: 195, fat: 70, carbs: 190 },
+  home_rest: { label: 'Home Rest', protein: 175, fat: 90, carbs: 88 },
+  travel_rest: { label: 'Travel Rest', protein: 180, fat: 85, carbs: 105 },
+}
 
 export function MacroSplitCard() {
+  const [mode, setMode] = useState<Mode>('home_workout')
+
   const now = new Date()
   const rawWeek = getWeekNumber(now)
   const week =
@@ -15,11 +27,11 @@ export function MacroSplitCard() {
 
   const dow = getDayOfWeek(now)
   const phase = getPhase(week)
-  const calories = getEffectiveCalories(week, dow)
 
-  const protein = phase.protein
-  const fat = phase.fat
-  const carbs = phase.carbs
+  const macroData = MODE_MACROS[mode]
+  const protein = macroData.protein
+  const fat = macroData.fat
+  const carbs = macroData.carbs
 
   const proteinCals = protein * 4
   const fatCals = fat * 9
@@ -40,8 +52,6 @@ export function MacroSplitCard() {
   const fatLen = fatPct * circumference
   const carbLen = carbPct * circumference
 
-  // Offsets: each segment starts after the previous one
-  // SVG circle starts at 3 o'clock, so rotate -90deg to start at top
   const proteinOffset = 0
   const fatOffset = proteinLen
   const carbOffset = proteinLen + fatLen
@@ -53,12 +63,26 @@ export function MacroSplitCard() {
   ]
 
   return (
-    <DashboardCard title="Macro Split">
+    <DashboardCard
+      title="Macro Split"
+      controls={
+        <select
+          value={mode}
+          onChange={(e) => setMode(e.target.value as Mode)}
+          className="text-[11px] bg-[#0f1020] text-[#7a7b90] rounded-lg px-2 py-1 border border-white/[0.06] cursor-pointer"
+        >
+          <option value="home_workout">Home WO</option>
+          <option value="travel_workout">Travel WO</option>
+          <option value="home_rest">Home Rest</option>
+          <option value="travel_rest">Travel Rest</option>
+        </select>
+      }
+    >
       {/* Hero calories */}
       <div className="mb-4">
         <div className="flex items-baseline gap-2">
           <span className="text-[48px] font-bold tracking-tight text-[#f0f0f5] leading-none">
-            {calories.toLocaleString()}
+            {totalMacroCals.toLocaleString()}
           </span>
           <span className="text-[12px] text-[#7a7b90]">kcal</span>
         </div>

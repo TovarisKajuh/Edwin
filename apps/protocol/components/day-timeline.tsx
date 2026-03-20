@@ -9,6 +9,7 @@ import { BlockDetail } from './block-detail'
 interface DayTimelineProps {
   date: Date
   mode: Mode
+  workoutIndex?: number
 }
 
 const SECTIONS = [
@@ -28,11 +29,11 @@ function getSection(time: string): string {
   return 'EVENING'
 }
 
-export function DayTimeline({ date, mode }: DayTimelineProps) {
+export function DayTimeline({ date, mode, workoutIndex }: DayTimelineProps) {
   const [selectedBlock, setSelectedBlock] = useState<TimeBlockType | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const blocks = useMemo(() => generateDay(date, mode), [date, mode])
+  const blocks = useMemo(() => generateDay(date, mode, workoutIndex), [date, mode, workoutIndex])
 
   // Group blocks by section
   const groupedBlocks = useMemo(() => {
