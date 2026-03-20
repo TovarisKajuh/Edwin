@@ -286,6 +286,11 @@ export function generateDay(date: Date, mode: Mode, workoutIndex?: number): Time
 
     const variation = selectMealVariation(variationSlot, protocolDay, zincDay)
 
+    // Override template protein/fat with actual variation values (carbs stay phase-scaled)
+    macros.protein = variation.totalProtein
+    macros.fat = variation.totalFat
+    macros.calories = macros.protein * 4 + macros.fat * 9 + macros.carbs * 4
+
     // Build supplements for this meal
     // Determine which supplement slot this corresponds to
     let mealSupps: { name: string; dose: string; why: string }[] = []
@@ -399,7 +404,7 @@ export function generateDay(date: Date, mode: Mode, workoutIndex?: number): Time
             ? 'Refeed Saturday: extra carbs restore leptin signaling and muscle glycogen.'
             : phase.psychologyBrief,
       }),
-      edwinNote: edwinNote('nutrition'),
+      edwinNote: i === 0 ? edwinNote('nutrition') : undefined,
       warning: mealWarning,
       mealDetail,
     })
