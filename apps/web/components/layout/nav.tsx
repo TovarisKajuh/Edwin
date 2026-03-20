@@ -20,7 +20,7 @@ const navItems: NavItem[] = [
   { href: '/voice', label: 'Voice', icon: '\u25CF' },
 ];
 
-const PROTOCOL_URL = process.env.NEXT_PUBLIC_PROTOCOL_URL || '';
+const PROTOCOL_URL = 'https://edwin-protocol.vercel.app';
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -124,21 +124,19 @@ export function Sidebar() {
           })}
           <NotificationBadge onClick={() => setPanelOpen(true)} />
 
-          {/* Protocol link — only shown when NEXT_PUBLIC_PROTOCOL_URL is set */}
-          {PROTOCOL_URL && (
-            <div className="mt-6 border-t border-white/[0.05] pt-4">
-              <a
-                href={PROTOCOL_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[#7a7b90] transition-colors hover:bg-white/[0.03] hover:text-[#f0f0f5]"
-              >
-                <span className="text-base">&#9670;</span>
-                <span>Protocol</span>
-                <span className="ml-auto text-xs text-[#45465a]">&#8599;</span>
-              </a>
-            </div>
-          )}
+          {/* Protocol link */}
+          <div className="mt-6 border-t border-white/[0.05] pt-4">
+            <a
+              href={PROTOCOL_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[#7a7b90] transition-colors hover:bg-white/[0.03] hover:text-[#f0f0f5]"
+            >
+              <span className="text-base">&#9670;</span>
+              <span>Protocol</span>
+              <span className="ml-auto text-xs text-[#45465a]">&#8599;</span>
+            </a>
+          </div>
         </nav>
       </aside>
       <NotificationPanel
