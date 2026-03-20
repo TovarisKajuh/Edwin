@@ -16,11 +16,11 @@ function timeAgo(timestamp: string): string {
 }
 
 const TYPE_CONFIG: Record<NotificationType, { icon: string; color: string }> = {
-  briefing: { icon: '☀', color: 'text-amber-400' },
-  reminder: { icon: '⏰', color: 'text-red-400' },
-  alert: { icon: '⚡', color: 'text-red-500' },
-  nudge: { icon: '💡', color: 'text-green-400' },
-  info: { icon: '📌', color: 'text-zinc-400' },
+  briefing: { icon: '\u2600', color: 'text-amber-400' },
+  reminder: { icon: '\u23F0', color: 'text-red-400' },
+  alert: { icon: '\u26A1', color: 'text-red-500' },
+  nudge: { icon: '\uD83D\uDCA1', color: 'text-green-400' },
+  info: { icon: '\uD83D\uDCCC', color: 'text-[#7a7b90]' },
 };
 
 function inferType(n: Notification): NotificationType {
@@ -84,12 +84,12 @@ export function NotificationPanel({
       <div className="fixed inset-0 z-50" onClick={onClose} />
 
       {/* Panel */}
-      <div className="fixed right-0 top-0 z-50 h-full w-full max-w-md border-l border-zinc-800 bg-zinc-950 shadow-2xl md:right-auto md:left-64">
-        <div className="flex items-center justify-between border-b border-zinc-800 px-6 py-4">
-          <h2 className="text-lg font-semibold text-zinc-100">Notifications</h2>
+      <div className="fixed right-0 top-0 z-50 h-full w-full max-w-md border-l border-white/[0.05] bg-[#0b0d19] shadow-2xl md:right-auto md:left-64">
+        <div className="flex items-center justify-between border-b border-white/[0.05] px-6 py-4">
+          <h2 className="text-lg font-semibold text-[#f0f0f5]">Notifications</h2>
           <button
             onClick={onClose}
-            className="rounded-lg p-2 text-zinc-500 transition-colors hover:bg-zinc-900 hover:text-zinc-300"
+            className="rounded-lg p-2 text-[#7a7b90] transition-colors hover:bg-white/[0.03] hover:text-[#f0f0f5]"
           >
             &#10005;
           </button>
@@ -97,13 +97,13 @@ export function NotificationPanel({
 
         <div className="h-full overflow-y-auto pb-20">
           {loading ? (
-            <div className="px-6 py-8 text-center text-zinc-500">Loading...</div>
+            <div className="px-6 py-8 text-center text-[#7a7b90]">Loading...</div>
           ) : notifications.length === 0 ? (
-            <div className="px-6 py-8 text-center text-zinc-500">
+            <div className="px-6 py-8 text-center text-[#7a7b90]">
               No notifications yet. Edwin will reach out when there&apos;s something worth saying.
             </div>
           ) : (
-            <div className="divide-y divide-zinc-900">
+            <div className="divide-y divide-white/[0.03]">
               {notifications.map((n) => {
                 const type = inferType(n);
                 const config = TYPE_CONFIG[type];
@@ -111,15 +111,15 @@ export function NotificationPanel({
                   <button
                     key={n.id}
                     onClick={() => !n.read && handleMarkRead(n.id)}
-                    className={`w-full px-6 py-4 text-left transition-colors hover:bg-zinc-900 ${
+                    className={`w-full px-6 py-4 text-left transition-colors hover:bg-white/[0.03] ${
                       n.read ? 'opacity-60' : ''
                     }`}
                   >
                     <div className="flex items-start gap-3">
                       <span className={`mt-0.5 text-base ${config.color}`}>{config.icon}</span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm text-zinc-200">{n.message}</p>
-                        <p className="mt-1 text-xs text-zinc-600">{timeAgo(n.timestamp)}</p>
+                        <p className="text-sm text-[#f0f0f5]">{n.message}</p>
+                        <p className="mt-1 text-xs text-[#45465a]">{timeAgo(n.timestamp)}</p>
                       </div>
                       {!n.read && (
                         <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-amber-400" />

@@ -90,9 +90,9 @@ export default function ChatPage() {
   return (
     <div className="flex h-screen flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-20 border-b border-zinc-800 bg-zinc-950/80 px-4 py-4 backdrop-blur-sm">
-        <h1 className="text-lg font-semibold text-zinc-100">Edwin</h1>
-        <p className="text-xs text-zinc-500">
+      <header className="sticky top-0 z-20 border-b border-white/[0.05] bg-[#0b0d19]/80 px-4 py-4 backdrop-blur-sm">
+        <h1 className="text-lg font-semibold text-[#f0f0f5]">Edwin</h1>
+        <p className="text-xs text-[#7a7b90]">
           {loading ? 'Edwin is typing...' : 'Online'}
         </p>
       </header>
@@ -101,10 +101,10 @@ export default function ChatPage() {
       <div className="flex-1 overflow-y-auto px-4 pt-4 pb-36 md:pb-24">
         {messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-center">
-            <p className="text-lg text-zinc-400">
+            <p className="text-lg text-[#7a7b90]">
               Start a conversation with Edwin.
             </p>
-            <p className="mt-2 text-sm text-zinc-600">
+            <p className="mt-2 text-sm text-[#45465a]">
               He&apos;s ready when you are, sir.
             </p>
           </div>

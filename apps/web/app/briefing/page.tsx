@@ -42,7 +42,7 @@ export default function BriefingPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="animate-pulse text-zinc-400">Edwin is preparing your briefing...</p>
+        <p className="animate-pulse text-[#7a7b90]">Edwin is preparing your briefing...</p>
       </div>
     );
   }
@@ -50,7 +50,7 @@ export default function BriefingPage() {
   if (error || !data) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="text-zinc-500">Could not load briefing. Try again later, sir.</p>
+        <p className="text-[#7a7b90]">Could not load briefing. Try again later, sir.</p>
       </div>
     );
   }
@@ -66,12 +66,12 @@ export default function BriefingPage() {
   return (
     <div className="mx-auto max-w-2xl p-6 pt-10 md:p-10">
       <header className="mb-8 text-center">
-        <p className="text-sm text-zinc-500">{dateStr}</p>
-        <h1 className="mt-2 text-3xl font-light text-zinc-100">Good Morning, Sir</h1>
+        <p className="text-sm text-[#7a7b90]">{dateStr}</p>
+        <h1 className="mt-2 text-3xl font-light text-[#f0f0f5]">Good Morning, Sir</h1>
         {data.audio && (
           <button
             onClick={togglePlay}
-            className="mt-4 inline-flex items-center gap-2 rounded-full border border-zinc-700 px-5 py-2 text-sm text-zinc-300 transition-colors hover:border-amber-400 hover:text-amber-400"
+            className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/[0.08] px-5 py-2 text-sm text-[#f0f0f5]/80 transition-colors hover:border-amber-400 hover:text-amber-400"
           >
             {playing ? (
               <>
@@ -88,10 +88,10 @@ export default function BriefingPage() {
         )}
       </header>
 
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 md:p-8">
+      <div className="rounded-[20px] border border-white/[0.05] bg-[#151729]/60 p-6 backdrop-blur-xl md:p-8">
         {data.text.split('\n').map((paragraph, i) => (
           paragraph.trim() ? (
-            <p key={i} className="mb-4 text-sm leading-relaxed text-zinc-300">
+            <p key={i} className="mb-4 text-sm leading-relaxed text-[#f0f0f5]/80">
               {paragraph}
             </p>
           ) : null

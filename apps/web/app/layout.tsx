@@ -1,13 +1,9 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
+import { GeistSans } from 'geist/font/sans';
+import { GeistMono } from 'geist/font/mono';
 import { AppShell } from '@/components/layout/app-shell';
 import { PWARegister } from '@/components/pwa-register';
 import './globals.css';
-
-const inter = Inter({
-  variable: '--font-inter',
-  subsets: ['latin'],
-});
 
 export const metadata: Metadata = {
   title: 'Edwin',
@@ -15,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#09090b',
+  themeColor: '#0b0d19',
 };
 
 export default function RootLayout({
@@ -24,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -32,7 +28,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="Edwin" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
-      <body className={`${inter.variable} antialiased`}>
+      <body className="font-sans antialiased">
         <PWARegister />
         <AppShell>{children}</AppShell>
       </body>

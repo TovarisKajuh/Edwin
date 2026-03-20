@@ -25,13 +25,13 @@ export function NotificationToast({ message, onDismiss, duration = 5000 }: Toast
         visible ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0'
       }`}
     >
-      <div className="max-w-sm rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-3 shadow-lg">
+      <div className="max-w-sm rounded-[16px] border border-white/[0.08] bg-[#151729]/80 px-4 py-3 shadow-lg backdrop-blur-xl">
         <div className="flex items-center gap-2">
           <span className="text-amber-400">&#9672;</span>
-          <p className="text-sm text-zinc-200">{message}</p>
+          <p className="text-sm text-[#f0f0f5]">{message}</p>
           <button
             onClick={() => { setVisible(false); setTimeout(onDismiss, 300); }}
-            className="ml-2 text-xs text-zinc-500 hover:text-zinc-300"
+            className="ml-2 text-xs text-[#7a7b90] hover:text-[#f0f0f5]"
           >
             &#10005;
           </button>

@@ -117,12 +117,12 @@ export function CallScreen() {
   const micDisabled = callState === 'processing' || callState === 'speaking';
 
   const avatarClasses = (() => {
-    if (!inCall) return 'w-32 h-32 rounded-full bg-zinc-800 border-2 border-amber-400/30 flex items-center justify-center';
+    if (!inCall) return 'w-32 h-32 rounded-full bg-[#151729] border-2 border-amber-400/30 flex items-center justify-center';
     switch (callState) {
       case 'speaking': return 'w-32 h-32 rounded-full bg-amber-400/20 border-2 border-amber-400 flex items-center justify-center animate-pulse';
       case 'listening': return 'w-32 h-32 rounded-full bg-green-400/20 border-2 border-green-400 flex items-center justify-center';
       case 'processing': return 'w-32 h-32 rounded-full bg-blue-400/20 border-2 border-blue-400 flex items-center justify-center animate-pulse';
-      default: return 'w-32 h-32 rounded-full bg-zinc-800 border-2 border-zinc-700 flex items-center justify-center';
+      default: return 'w-32 h-32 rounded-full bg-[#151729] border-2 border-white/[0.08] flex items-center justify-center';
     }
   })();
 
@@ -142,8 +142,8 @@ export function CallScreen() {
           <span className="text-4xl text-amber-400">E</span>
         </div>
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-zinc-100">Edwin</h2>
-          <p className="mt-1 text-sm text-zinc-500">Ready to speak, sir.</p>
+          <h2 className="text-xl font-semibold text-[#f0f0f5]">Edwin</h2>
+          <p className="mt-1 text-sm text-[#7a7b90]">Ready to speak, sir.</p>
           {!supported && (
             <p className="mt-2 text-xs text-red-400">Audio recording is not supported in this browser.</p>
           )}
@@ -168,17 +168,17 @@ export function CallScreen() {
         <span className="text-4xl text-amber-400">E</span>
       </div>
 
-      <p className="text-sm text-zinc-400">{statusText}</p>
+      <p className="text-sm text-[#7a7b90]">{statusText}</p>
 
       {(lastTranscript || lastResponse) && (
         <div className="max-w-sm space-y-2 text-center">
           {lastTranscript && (
-            <p className="text-sm text-zinc-500">
-              <span className="font-medium text-zinc-400">You:</span> {lastTranscript}
+            <p className="text-sm text-[#7a7b90]">
+              <span className="font-medium text-[#f0f0f5]/70">You:</span> {lastTranscript}
             </p>
           )}
           {lastResponse && (
-            <p className="text-sm text-zinc-300">
+            <p className="text-sm text-[#f0f0f5]/80">
               <span className="font-medium text-amber-400">Edwin:</span> {lastResponse}
             </p>
           )}
@@ -192,7 +192,7 @@ export function CallScreen() {
           className={`flex h-14 w-14 items-center justify-center rounded-full transition-colors ${
             recording
               ? 'bg-green-600 text-white animate-pulse'
-              : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600'
+              : 'bg-white/[0.06] text-[#f0f0f5]/80 hover:bg-white/[0.1]'
           } disabled:cursor-not-allowed disabled:opacity-50`}
           aria-label={recording ? 'Stop recording' : 'Start recording'}
         >

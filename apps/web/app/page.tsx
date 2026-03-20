@@ -33,10 +33,10 @@ export default function DashboardPage() {
     return (
       <div className="flex min-h-screen items-center justify-center p-6">
         <div className="text-center">
-          <h1 className="text-2xl font-light text-zinc-100 md:text-3xl">
+          <h1 className="text-2xl font-light text-[#f0f0f5] md:text-3xl">
             Good to see you, sir.
           </h1>
-          <p className="mt-2 text-sm text-zinc-500">
+          <p className="mt-2 text-sm text-[#7a7b90]">
             Edwin is having trouble connecting. Please ensure the server is running.
           </p>
         </div>
@@ -47,7 +47,7 @@ export default function DashboardPage() {
   if (!data) {
     return (
       <div className="flex min-h-screen items-center justify-center p-6">
-        <p className="text-lg text-zinc-500">Edwin is waking up...</p>
+        <p className="text-lg text-[#7a7b90]">Edwin is waking up...</p>
       </div>
     );
   }
@@ -65,14 +65,14 @@ export default function DashboardPage() {
       {/* Header */}
       <header className="mb-6 flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-light text-zinc-100 md:text-3xl">
+          <h1 className="text-2xl font-light text-[#f0f0f5] md:text-3xl">
             {data.greeting}
           </h1>
-          <p className="mt-1 text-sm text-zinc-500">{data.date}</p>
+          <p className="mt-1 text-sm text-[#7a7b90]">{data.date}</p>
         </div>
         <button
           onClick={() => testPush().then((r) => alert(r.sent > 0 ? 'Push sent!' : 'No subscriptions found.')).catch(() => alert('Push failed.'))}
-          className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-400 transition-colors hover:border-amber-400 hover:text-amber-400 active:scale-95"
+          className="rounded-[12px] border border-white/[0.08] px-3 py-1.5 text-xs text-[#7a7b90] transition-colors hover:border-amber-400 hover:text-amber-400 active:scale-95"
         >
           Test Push
         </button>
@@ -94,7 +94,7 @@ export default function DashboardPage() {
       {/* Row 2: Goals */}
       {data.goals.length > 0 && (
         <section className="mb-6">
-          <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-zinc-400">
+          <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-[#7a7b90]">
             Goals
           </h2>
           <GoalsRow goals={data.goals} />
@@ -105,15 +105,15 @@ export default function DashboardPage() {
       <div className="mb-6 grid gap-6 lg:grid-cols-2">
         {/* Left: Schedule + Actions stacked */}
         <div className="space-y-6">
-          <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-            <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-zinc-400">
+          <section className="rounded-[20px] border border-white/[0.05] bg-[#151729]/60 p-6 backdrop-blur-xl">
+            <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-[#7a7b90]">
               Today&apos;s Schedule
             </h2>
             <ScheduleTimeline schedule={data.schedule} />
           </section>
 
-          <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-            <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-zinc-400">
+          <section className="rounded-[20px] border border-white/[0.05] bg-[#151729]/60 p-6 backdrop-blur-xl">
+            <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-[#7a7b90]">
               Pending Actions
             </h2>
             <ActionsPanel actions={data.pendingActions} />
@@ -122,15 +122,15 @@ export default function DashboardPage() {
 
         {/* Right: Bills + Habits stacked */}
         <div className="space-y-6">
-          <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-            <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-zinc-400">
+          <section className="rounded-[20px] border border-white/[0.05] bg-[#151729]/60 p-6 backdrop-blur-xl">
+            <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-[#7a7b90]">
               Upcoming Bills
             </h2>
             <BillsPanel bills={data.financeSummary.pendingBills} />
           </section>
 
-          <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-            <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-zinc-400">
+          <section className="rounded-[20px] border border-white/[0.05] bg-[#151729]/60 p-6 backdrop-blur-xl">
+            <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-[#7a7b90]">
               Habits
             </h2>
             <HabitsGrid habits={data.habits} />

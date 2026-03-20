@@ -38,7 +38,7 @@ export function ChatInput({ onSend, disabled = false }: ChatInputProps) {
   );
 
   return (
-    <div className="fixed bottom-16 left-0 right-0 z-30 border-t border-zinc-800 bg-zinc-900 pb-[env(safe-area-inset-bottom)] md:bottom-0 md:left-64">
+    <div className="fixed bottom-16 left-0 right-0 z-30 border-t border-white/[0.05] bg-[#0f1020] pb-[env(safe-area-inset-bottom)] md:bottom-0 md:left-64">
       <div className="mx-auto flex max-w-4xl items-end gap-3 px-4 py-3">
         <textarea
           ref={textareaRef}
@@ -48,13 +48,13 @@ export function ChatInput({ onSend, disabled = false }: ChatInputProps) {
           onKeyDown={handleKeyDown}
           placeholder="Message Edwin..."
           disabled={disabled}
-          className="flex-1 resize-none rounded-xl bg-zinc-800 px-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-400/50 disabled:opacity-50"
+          className="flex-1 resize-none rounded-[14px] bg-[#151729]/60 border border-white/[0.05] px-4 py-2.5 text-sm text-[#f0f0f5] placeholder-[#45465a] focus:outline-none focus:ring-2 focus:ring-amber-400/50 disabled:opacity-50"
           style={{ maxHeight: `${4 * 24}px` }}
         />
         <button
           onClick={handleSend}
           disabled={!value.trim() || disabled}
-          className="min-h-[44px] min-w-[44px] rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-medium text-black transition-all hover:opacity-90 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="min-h-[44px] min-w-[44px] rounded-[14px] bg-amber-500 px-4 py-2.5 text-sm font-medium text-black transition-all hover:opacity-90 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Send
         </button>

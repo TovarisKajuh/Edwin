@@ -94,20 +94,20 @@ export function IncomingCall({ title, subtitle, onAccept, onDecline }: IncomingC
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/95 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0b0d19]/95 backdrop-blur-sm">
       <div className="flex flex-col items-center gap-8 px-6 text-center">
         {/* Avatar pulse */}
         <div className="relative">
           <div className="absolute inset-0 animate-ping rounded-full bg-amber-400/20" />
-          <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-zinc-800 border-2 border-amber-400">
+          <div className="relative flex h-24 w-24 items-center justify-center rounded-full bg-[#151729] border-2 border-amber-400">
             <span className="text-3xl font-bold text-amber-400">E</span>
           </div>
         </div>
 
         {/* Info */}
         <div>
-          <h2 className="text-2xl font-light text-zinc-100">{title}</h2>
-          <p className="mt-1 text-sm text-zinc-400">{subtitle}</p>
+          <h2 className="text-2xl font-light text-[#f0f0f5]">{title}</h2>
+          <p className="mt-1 text-sm text-[#7a7b90]">{subtitle}</p>
         </div>
 
         {/* Action buttons */}
@@ -130,7 +130,7 @@ export function IncomingCall({ title, subtitle, onAccept, onDecline }: IncomingC
           </button>
         </div>
 
-        <div className="flex gap-8 text-xs text-zinc-500">
+        <div className="flex gap-8 text-xs text-[#7a7b90]">
           <span>Decline</span>
           <span>Accept</span>
         </div>

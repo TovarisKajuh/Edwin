@@ -110,20 +110,20 @@ export function PushPrompt() {
   if (state !== 'prompt') return null;
 
   return (
-    <div className="fixed bottom-20 left-4 right-4 z-50 mx-auto max-w-sm rounded-xl border border-zinc-800 bg-zinc-900 p-4 shadow-2xl md:bottom-6 md:left-auto md:right-6">
-      <p className="text-sm text-zinc-200">
+    <div className="fixed bottom-20 left-4 right-4 z-50 mx-auto max-w-sm rounded-[20px] border border-white/[0.05] bg-[#151729]/80 p-4 shadow-2xl backdrop-blur-xl md:bottom-6 md:left-auto md:right-6">
+      <p className="text-sm text-[#f0f0f5]">
         Allow Edwin to send you notifications? He&apos;ll only reach out when it matters.
       </p>
       <div className="mt-3 flex gap-2">
         <button
           onClick={handleAllow}
-          className="flex-1 rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-zinc-950 transition-colors hover:bg-amber-400"
+          className="flex-1 rounded-[12px] bg-amber-500 px-4 py-2 text-sm font-medium text-[#0b0d19] transition-colors hover:bg-amber-400"
         >
           Allow
         </button>
         <button
           onClick={() => setState('hidden')}
-          className="flex-1 rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-400 transition-colors hover:bg-zinc-700"
+          className="flex-1 rounded-[12px] bg-white/[0.06] px-4 py-2 text-sm font-medium text-[#7a7b90] transition-colors hover:bg-white/[0.1]"
         >
           Not now
         </button>
